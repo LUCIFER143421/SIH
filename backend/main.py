@@ -1,4 +1,5 @@
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes_demo import router as demo_router, load_demo_case
@@ -12,17 +13,39 @@ from api.routes_entities import router as entities_router
 from services.db_service import db_service
 from graph.networkx_adapter import graph_adapter
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup initialization
+    existing_entities = db_service.get_entities()
+    if not existing_entities:
+        print("[CRIMENET AI] Initializing database with demo investigation scenario...")
+        load_demo_case()
+    else:
+        print(f"[CRIMENET AI] Hydrating knowledge graph with {len(existing_entities)} existing entities...")
+        graph_adapter.ensure_hydrated()
+    print(f"[CRIMENET AI] Knowledge Graph ready with {len(graph_adapter.g.nodes)} nodes and {len(graph_adapter.g.edges)} edges.")
+    
+    yield
+    # Shutdown logic (if any cleanup needed)
+
 app = FastAPI(
     title="CRIMENET AI - Criminal Network Analysis & Intelligence Support",
     description="AI-Powered Criminal Network Intelligence System for SIH 2026 Problem Statement 26189",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "*"
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,17 +59,6 @@ app.include_router(alerts_router)
 app.include_router(resolution_router)
 app.include_router(copilot_router)
 app.include_router(entities_router)
-
-@app.on_event("startup")
-def startup_event():
-    existing_entities = db_service.get_entities()
-    if not existing_entities:
-        print("[CRIMENET AI] Initializing database with demo investigation scenario...")
-        load_demo_case()
-    else:
-        print(f"[CRIMENET AI] Hydrating knowledge graph with {len(existing_entities)} existing entities...")
-        graph_adapter.ensure_hydrated()
-    print(f"[CRIMENET AI] Knowledge Graph ready with {len(graph_adapter.g.nodes)} nodes and {len(graph_adapter.g.edges)} edges.")
 
 @app.get("/")
 def root():

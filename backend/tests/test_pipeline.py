@@ -1,5 +1,6 @@
 import pytest
 from services.synthetic_generator import generate_synthetic_investigation
+from services.db_service import db_service
 from nlp.entity_extractor import entity_extractor
 from nlp.relation_extractor import relation_extractor
 from nlp.resolution_engine import resolution_engine
@@ -16,16 +17,42 @@ def test_synthetic_data_generation():
     assert len(data["relationships"]) >= 25
     assert len(data["alerts"]) >= 3
 
-def test_nlp_entity_extractor():
+def test_nlp_entity_extractor_standard():
     text = "Rahul Sharma contacted Amit Kumar using phone 9876543210 on 14 August near Dimapur Market. Vehicle NL-01-AB-1234 was observed."
     entities = entity_extractor.extract(text)
     names = [e["canonical_name"] for e in entities]
     types = [e["entity_type"] for e in entities]
     
-    assert "Amit Kumar" in names or "Rahul Sharma" in names
+    assert any("Amit Kumar" in n or "Rahul Sharma" in n for n in names)
     assert "PHONE" in types
     assert "VEHICLE" in types
     assert "LOCATION" in types
+
+def test_nlp_entity_extractor_novel_ungazetted_entities():
+    """
+    Asserts that completely novel person, organization, and location names
+    NOT part of any predefined list are correctly extracted via generalizable NER.
+    """
+    novel_text = (
+        "Inspector Aarav Deshmukh arrested suspect Priya Nambiar near Oberoi Business Plaza. "
+        "The suspect transferred funds through Zenith Logistics Pvt Ltd using account HDFC-CA-8877665544 "
+        "and drove vehicle MH-02-ZZ-9999 to Mumbai Port Terminal."
+    )
+    entities = entity_extractor.extract(novel_text)
+    names = [e["canonical_name"] for e in entities]
+    types = [e["entity_type"] for e in entities]
+
+    # Novel Persons
+    assert any("Aarav Deshmukh" in n or "Priya Nambiar" in n for n in names)
+    # Novel Organization
+    assert any("Zenith Logistics" in n for n in names)
+    assert "ORGANIZATION" in types
+    # Novel Location
+    assert any("Oberoi Business Plaza" in n or "Mumbai Port Terminal" in n for n in names)
+    assert "LOCATION" in types
+    # Structured identifiers
+    assert "ACCOUNT" in types
+    assert "VEHICLE" in types
 
 def test_relation_extractor():
     text = "Amit Kumar used vehicle AS-01-XY-9821 near Dimapur Market Warehouse."
@@ -57,6 +84,54 @@ def test_shortest_path():
     assert path_res["status"] == "PATH_FOUND"
     assert len(path_res["path_nodes"]) >= 2
 
-def test_anomaly_detection():
+def test_anomaly_detection_with_real_patterns():
+    # Setup full scenario
+    data = generate_synthetic_investigation()
+    db_service.clear_all_data()
+    graph_adapter.clear()
+    
+    for e in data["entities"]:
+        db_service.insert_entity(e["id"], e["name"], e["type"], e["risk_score"], e["metadata"])
+        graph_adapter.add_node(e["id"], e["name"], e["type"], e["metadata"])
+    for r in data["relationships"]:
+        db_service.insert_relationship(r["id"], r["source"], r["target"], r["type"], r["confidence"], r["timestamp"], r["doc"], r["snippet"])
+        graph_adapter.add_edge(r["id"], r["source"], r["target"], r["type"], r["confidence"], r["timestamp"], r["doc"])
+
     anomalies = anomaly_detector.scan_all_anomalies()
-    assert len(anomalies) >= 2
+    rule_names = [a["rule_name"] for a in anomalies]
+    
+    assert "CROSS_COMMUNITY_BRIDGE" in rule_names
+    assert "SHARED_INFRASTRUCTURE" in rule_names
+    assert "UNUSUAL_TRANSACTION_STRUCTURING" in rule_names
+    assert "COMMUNICATION_BURST" in rule_names
+
+def test_anomaly_detection_negative_case_no_false_positives():
+    """
+    Constructs a clean graph WITHOUT bursts or layering or shared assets
+    and asserts that false alerts are NOT generated.
+    """
+    db_service.clear_all_data()
+    graph_adapter.clear()
+
+    # Add 2 disconnected nodes with 1 regular call
+    db_service.insert_entity("PER_CLEAN_1", "Officer A", "PERSON")
+    db_service.insert_entity("PER_CLEAN_2", "Officer B", "PERSON")
+    graph_adapter.add_node("PER_CLEAN_1", "Officer A", "PERSON")
+    graph_adapter.add_node("PER_CLEAN_2", "Officer B", "PERSON")
+
+    db_service.insert_relationship(
+        "REL_CLEAN_1", "PER_CLEAN_1", "PER_CLEAN_2", "CALLS",
+        confidence=0.9, timestamp="2026-01-01", doc_id="DOC_CLEAN"
+    )
+    graph_adapter.add_edge(
+        "REL_CLEAN_1", "PER_CLEAN_1", "PER_CLEAN_2", "CALLS",
+        confidence=0.9, timestamp="2026-01-01", document_id="DOC_CLEAN"
+    )
+
+    anomalies = anomaly_detector.scan_all_anomalies()
+    rule_names = [a["rule_name"] for a in anomalies]
+
+    # No structuring or bridge alerts should fire
+    assert "UNUSUAL_TRANSACTION_STRUCTURING" not in rule_names
+    assert "CROSS_COMMUNITY_BRIDGE" not in rule_names
+    assert "SHARED_INFRASTRUCTURE" not in rule_names

@@ -47,3 +47,13 @@ body {
   backdrop-filter: blur(8px);
   border: 1px solid rgba(51, 65, 85, 0.4);
 }
+
+/* Cross-browser SVG & Canvas pointer event fixes for Microsoft Edge */
+svg g, svg path, svg circle, svg rect, svg text {
+  pointer-events: auto;
+}
+
+canvas {
+  touch-action: none;
+}
+

@@ -22,6 +22,11 @@ export const fetchCommunities = async () => (await apiClient.get('/graph/communi
 // Analytics API
 export const fetchCentrality = async (topK = 10) => (await apiClient.get('/analytics/centrality', { params: { top_k: topK } })).data;
 export const fetchNetworkStats = async () => (await apiClient.get('/analytics/stats')).data;
+export const fetchDisruptionSimulation = async (targetEntityId) => (await apiClient.post('/analytics/disruption-simulation', { target_entity_id: targetEntityId })).data;
+export const testHypothesis = async (hypothesisId = 'vikram_coordination', customStatement = null) => (await apiClient.post('/analytics/test-hypothesis', { hypothesis_id: hypothesisId, custom_statement: customStatement })).data;
+export const fetchHiddenIntermediaries = async () => (await apiClient.get('/analytics/hidden-intermediaries')).data;
+export const fetchNextActions = async () => (await apiClient.get('/analytics/next-actions')).data;
+export const fetchFinancialFlow = async () => (await apiClient.get('/analytics/financial-flow')).data;
 
 // Alerts API
 export const fetchAlerts = async (status = null) => (await apiClient.get('/alerts', { params: { status } })).data;

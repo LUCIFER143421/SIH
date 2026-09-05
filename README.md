@@ -12,36 +12,39 @@ Criminal syndicates operate across fragmented communication lines, front organiz
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Technical Features
 
-1. **Multi-Source Data Ingestion & NLP Extraction**:
-   - Ingests FIRs, CDR phone records, Banking STRs, and Surveillance observation logs.
-   - Extracts Persons, Phones, Vehicles, Locations, Accounts, and typed relationships with confidence scoring.
+1. **Hybrid Data Ingestion & Generalizable NLP Extraction**:
+   - **spaCy-based Named Entity Recognition** augmented with robust regex extractors for structured Indian identifiers (phone numbers `+91-XXXXX-XXXXX`, vehicle plates `[A-Z]{2}-\d{2}-[A-Z]{1,2}-\d{4}`, and bank account numbers) alongside heuristic entity parsers for proper nouns and front companies.
+   - Preserves typed spans and confidence scores for downstream relationship mapping.
 
 2. **Modular Knowledge Graph & Analytics**:
    - In-memory `NetworkX MultiDiGraph` with pluggable Neo4j compatibility.
-   - Calculates Degree, Betweenness Centrality, PageRank, and Louvain Community Sub-clusters.
+   - Real-time computation of Degree, Betweenness Centrality, PageRank, and Louvain Community Sub-clusters.
 
-3. **Explainable Suspicious Pattern & Anomaly Detection**:
-   - Detects 7 explainable crime syndicate patterns (Communication Bursts, Cross-Community Bridges, Layered Hawala Structuring, Shared Infrastructure, Port Co-occurrence).
+3. **Computed Suspicious Pattern & Anomaly Detection**:
+   - **Communication Burst Analysis**: Analyzes timestamped CDR relations across temporal buckets to detect surges in call frequency (>150% spikes).
+   - **Transaction Structuring & Layering**: Traverses transaction subgraphs to detect multi-hop fund routing chains (A → B → C) and inbound consolidation/smurfing.
+   - **Cross-Community Bridges & Shared Infrastructure**: Flags pivotal bridge coordinators and shared burner SIM gateway devices.
 
 4. **100% Evidence Traceability & Zero Hallucination**:
-   - Every graph edge and alert is traceable to raw source document snippets.
-   - Ground-truth validation gate prevents LLM from inventing claims.
+   - Every graph edge, anomaly alert, and AI finding links directly to primary document records (`[DOC_FIR_001]`, `[DOC_BANK_005]`, `[DOC_CDR_004]`).
+   - Ground-truth validation gate ensures the LLM interprets only verified tool outputs.
 
 5. **Agentic Investigation Copilot**:
-   - Natural language investigation assistant powered by open-weight local models (Ollama `llama3.2:3b` / `qwen2.5:3b`) with deterministic rule fallback.
-   - Invokes verified analytical tools (`find_shortest_path`, `get_entity_profile`, `calculate_centrality`, `retrieve_evidence`).
+   - Natural language investigation assistant powered by open-weight local models (Ollama `llama3.2:3b` / `qwen2.5:3b`) with deterministic live-computed fallback.
+   - Invokes verified analytical tools (`find_shortest_path`, `get_entity_profile`, `calculate_centrality`, `detect_anomalies`, `retrieve_evidence`).
 
 6. **Interactive Visual Intelligence Workspace**:
-   - Cytoscape.js physics-driven canvas with node dragging, cluster coloring, 360° Entity Dossiers, and a Temporal Scrubber Slider.
+   - Reactive vector graph canvas with node dragging, zoom/pan controls, cluster coloring, 360° Entity Dossiers, and a Temporal Scrubber Slider.
+   - Multi-perspective layout switcher: **Circular Hub**, **Layered by Type**, and **Grid Matrix**.
 
 ---
 
 ## 💻 Tech Stack
 
-- **Backend**: Python 3.11, FastAPI, Pydantic, NetworkX, python-louvain, RapidFuzz, SQLite (WAL mode).
-- **Frontend**: React 18, Vite, Tailwind CSS, Cytoscape.js, Cytoscape-Cola, Lucide Icons.
+- **Backend**: Python 3.11, FastAPI (Lifespan Context Manager), Pydantic v2, NetworkX, python-louvain, RapidFuzz, spaCy, SQLite (WAL mode).
+- **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons.
 - **Local AI / LLM**: Ollama (`llama3.2:3b`) + Zero-dependency deterministic fallback engine.
 
 ---
@@ -56,7 +59,7 @@ Criminal syndicates operate across fragmented communication lines, front organiz
 ### 2. Backend Setup
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python main.py
 ```
 *Backend runs at `http://localhost:8000` (API Docs at `http://localhost:8000/docs`).*
@@ -74,13 +77,20 @@ Double-click `start.bat` to launch both backend and frontend servers simultaneou
 
 ---
 
-## 🎬 3-Minute Presentation Walkthrough
-1. Click **`[START DEMO INVESTIGATION]`** on the top bar to auto-populate the synthetic case **"Operation ShadowNet"**.
-2. Explore the **Network Explorer** to inspect the syndicate topology.
-3. Click **"Vikram Malhotra"** to view his 360° Entity Dossier and top betweenness centrality (0.48).
-4. Open the **Investigation Copilot** and ask: *"Why is Vikram Malhotra considered a key bridge entity?"*
-5. View the verified tool trace, evidence citations, and click **`[Highlight on Graph]`** to see the path light up.
-6. Check **Suspicious Alerts** to review the +340% Communication Burst and Shared Burner SIM detections.
+## 🧪 Testing & Validation
+
+Run the complete test suite:
+```bash
+cd backend
+pytest tests/ -v
+```
+
+Tests cover:
+- Synthetic multi-source scenario generation
+- Generalizable NER entity extraction (including novel proper nouns)
+- Positive and negative anomaly detection cases
+- Graph path finding and centrality calculations
+- Full FastAPI endpoint API tests (valid ingestion, 422 input validation, graph data, alerts, and copilot query)
 
 ---
 

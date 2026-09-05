@@ -3,6 +3,9 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import DashboardView from './views/DashboardView';
 import NetworkExplorerView from './views/NetworkExplorerView';
+import TimelineView from './views/TimelineView';
+import MoneyFlowView from './views/MoneyFlowView';
+import InvestigativeLeadsView from './views/InvestigativeLeadsView';
 import EntitiesListView from './views/EntitiesListView';
 import CopilotChat from './components/CopilotChat';
 import AnomalyAlerts from './components/AnomalyAlerts';
@@ -10,6 +13,7 @@ import EntityResolutionModal from './components/EntityResolutionModal';
 import IngestionModal from './components/IngestionModal';
 import TransparencyView from './components/TransparencyView';
 import EvidenceViewer from './components/EvidenceViewer';
+import InvestigationStoryModal from './components/InvestigationStoryModal';
 import { 
   loadDemoCase, 
   resetSystem, 
@@ -20,20 +24,21 @@ import {
 } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('network');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedEntityId, setSelectedEntityId] = useState('PER_001');
   const [activeEvidenceDocId, setActiveEvidenceDocId] = useState(null);
   const [copilotInitialQuery, setCopilotInitialQuery] = useState(null);
   const [highlightNodes, setHighlightNodes] = useState(['PER_001', 'PER_002', 'PER_004', 'ORG_001']);
   const [highlightEdges, setHighlightEdges] = useState([]);
   const [refreshKey, setRefreshKey] = useState(1);
+  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
   
   const [alertCount, setAlertCount] = useState(0);
   const [candidateCount, setCandidateCount] = useState(0);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [systemInfo, setSystemInfo] = useState(null);
 
-  // Auto-load on initial startup if empty
+  // Auto-check graph data on initial mount
   useEffect(() => {
     fetchGraphData().then(data => {
       if (!data.nodes || data.nodes.length === 0) {
@@ -57,8 +62,7 @@ export default function App() {
     try {
       await loadDemoCase();
       refreshCounters();
-      setRefreshKey((prev) => prev + 1); // Trigger immediate graph re-fetch
-      setActiveTab('network');
+      setRefreshKey((prev) => prev + 1);
       setSelectedEntityId('PER_001');
       setHighlightNodes(['PER_001', 'PER_002', 'PER_004', 'ORG_001']);
     } catch (err) {
@@ -69,7 +73,7 @@ export default function App() {
   };
 
   const handleReset = async () => {
-    if (window.confirm('Reset knowledge graph and clear current session?')) {
+    if (window.confirm('Reset knowledge graph and clear current investigation session?')) {
       await resetSystem();
       setSelectedEntityId(null);
       setHighlightNodes([]);
@@ -93,7 +97,8 @@ export default function App() {
 
   const handleGlobalSearch = (query) => {
     if (query) {
-      setActiveTab('entities');
+      setSelectedEntityId(query);
+      setActiveTab('network');
     }
   };
 
@@ -106,16 +111,18 @@ export default function App() {
         onSearch={handleGlobalSearch}
         isDemoLoading={isDemoLoading}
         systemInfo={systemInfo}
+        onOpenStoryModal={() => setIsStoryModalOpen(true)}
       />
 
       {/* Main App Body */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
+        {/* Left Hierarchical Sidebar */}
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           alertCount={alertCount}
           candidateCount={candidateCount}
+          onOpenTutorial={() => setIsStoryModalOpen(true)}
         />
 
         {/* Center Workspace */}
@@ -129,6 +136,7 @@ export default function App() {
               }}
               onStartDemo={handleStartDemo}
               isDemoLoading={isDemoLoading}
+              onOpenStoryModal={() => setIsStoryModalOpen(true)}
             />
           )}
 
@@ -145,15 +153,57 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'copilot' && (
-            <div className="p-4 h-full">
-              <CopilotChat
-                onHighlightGraph={handleHighlightGraph}
-                onOpenEvidence={setActiveEvidenceDocId}
-                onSelectEntity={setSelectedEntityId}
-                initialQuery={copilotInitialQuery}
-              />
-            </div>
+          {activeTab === 'timeline' && (
+            <TimelineView
+              onSelectEntity={(id) => {
+                setSelectedEntityId(id);
+                setActiveTab('network');
+              }}
+              onOpenEvidence={setActiveEvidenceDocId}
+              onAskCopilot={handleAskCopilot}
+            />
+          )}
+
+          {activeTab === 'financial' && (
+            <MoneyFlowView
+              onSelectEntity={(id) => {
+                setSelectedEntityId(id);
+                setActiveTab('network');
+              }}
+              onOpenEvidence={setActiveEvidenceDocId}
+              onAskCopilot={handleAskCopilot}
+            />
+          )}
+
+          {activeTab === 'leads' && (
+            <InvestigativeLeadsView
+              onSelectEntity={(id) => {
+                setSelectedEntityId(id);
+                setActiveTab('network');
+              }}
+              onOpenEvidence={setActiveEvidenceDocId}
+              onAskCopilot={handleAskCopilot}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === 'documents' && (
+            <IngestionModal
+              onDocumentIngested={() => {
+                refreshCounters();
+                setRefreshKey((prev) => prev + 1);
+              }}
+              onOpenEvidence={setActiveEvidenceDocId}
+            />
+          )}
+
+          {activeTab === 'resolution' && (
+            <EntityResolutionModal
+              onResolutionApplied={() => {
+                refreshCounters();
+                setRefreshKey((prev) => prev + 1);
+              }}
+            />
           )}
 
           {activeTab === 'alerts' && (
@@ -168,33 +218,15 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'entities' && (
-            <EntitiesListView
-              onSelectEntity={(id) => {
-                setSelectedEntityId(id);
-                setActiveTab('network');
-              }}
-              onAskCopilot={handleAskCopilot}
-            />
-          )}
-
-          {activeTab === 'resolution' && (
-            <EntityResolutionModal
-              onResolutionApplied={() => {
-                refreshCounters();
-                setRefreshKey((prev) => prev + 1);
-              }}
-            />
-          )}
-
-          {activeTab === 'documents' && (
-            <IngestionModal
-              onDocumentIngested={() => {
-                refreshCounters();
-                setRefreshKey((prev) => prev + 1);
-              }}
-              onOpenEvidence={setActiveEvidenceDocId}
-            />
+          {activeTab === 'copilot' && (
+            <div className="p-4 h-full">
+              <CopilotChat
+                onHighlightGraph={handleHighlightGraph}
+                onOpenEvidence={setActiveEvidenceDocId}
+                onSelectEntity={setSelectedEntityId}
+                initialQuery={copilotInitialQuery}
+              />
+            </div>
           )}
 
           {activeTab === 'transparency' && (
@@ -210,6 +242,13 @@ export default function App() {
           onClose={() => setActiveEvidenceDocId(null)}
         />
       )}
+
+      {/* 3-Minute Guided Investigation Story Modal for SIH Judges */}
+      <InvestigationStoryModal
+        isOpen={isStoryModalOpen}
+        onClose={() => setIsStoryModalOpen(false)}
+        onNavigateTab={setActiveTab}
+      />
     </div>
   );
 }

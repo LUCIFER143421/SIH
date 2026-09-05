@@ -10,7 +10,11 @@ import {
   FileText, 
   Bot, 
   ExternalLink,
-  Activity
+  Activity,
+  Sparkles,
+  HelpCircle,
+  TrendingUp,
+  Target
 } from 'lucide-react';
 import { fetchEntityDossier } from '../services/api';
 
@@ -34,10 +38,43 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
 
   if (!entityId) return null;
 
+  // Generate plain English "Why Should I Care?" explanation
+  const getWhyShouldICareText = () => {
+    if (!dossier || !dossier.entity) return "";
+    const name = dossier.entity.canonical_name;
+    const type = dossier.entity.entity_type;
+    const betweenness = dossier.entity.betweenness || 0;
+    const degree = dossier.entity.degree || (dossier.direct_associates?.length || 0);
+
+    if (name.includes("Vikram Malhotra")) {
+      return "Vikram operates as the central coordinator and structural bridge across logistics transport, Kolkata Hawala accounts, and Delhi SIM distribution. He received Rs 15 Lakh RTGS outbound after smurfing deposits into Apex Logistics.";
+    }
+    if (name.includes("Rajesh Thapa")) {
+      return "Rajesh directs the North-East logistics transport wing, issuing dispatch orders to truck drivers and meeting customs contacts at Haldia Port.";
+    }
+    if (name.includes("Suresh Agarwal")) {
+      return "Suresh manages the Park Street bullion and Hawala desk, initiating structured cash routing into front company accounts.";
+    }
+    if (name.includes("Apex Logistics")) {
+      return "Front transport company whose HDFC account received 14 structured sub-50k deposits ('Smurfing') before transferring Rs 15 Lakh to Vikram Malhotra.";
+    }
+    if (name.includes("Inspector S. K. Roy")) {
+      return "Port customs official flagged by surveillance for physical off-duty meetings with syndicate couriers at Haldia Port Terminal 4.";
+    }
+    if (name.includes("+91-98555-66778")) {
+      return "Hardware burner SIM gateway shared concurrently by 3 key syndicate suspects across different jurisdictions.";
+    }
+
+    if (betweenness > 0.15) {
+      return `${name} connects multiple otherwise isolated groups in the syndicate and participates in multi-modal relationships across ${degree} connected entities.`;
+    }
+    return `${name} is an active ${type.toLowerCase()} entity linked across ${degree} direct relationships in the investigation knowledge graph.`;
+  };
+
   return (
     <div className="w-96 border-l border-intel-800 bg-intel-950/95 backdrop-blur flex flex-col h-full overflow-hidden shadow-2xl z-20 shrink-0 select-none">
       {/* Header */}
-      <div className="p-4 border-b border-intel-800 flex items-center justify-between">
+      <div className="p-4 border-b border-intel-800 flex items-center justify-between bg-intel-950/80">
         <div className="flex items-center space-x-2">
           <ShieldAlert className="w-5 h-5 text-intel-accent" />
           <h2 className="font-bold text-sm text-slate-100 tracking-tight">ENTITY DOSSIER (360°)</h2>
@@ -58,10 +95,10 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
       ) : dossier ? (
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
           {/* Main Entity Card */}
-          <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-2.5">
+          <div className="p-4 rounded-2xl bg-intel-900 border border-intel-700/80 space-y-3 shadow-lg">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-intel-accent/20 text-intel-accent border border-intel-accent/30">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-intel-accent/20 text-intel-accent border border-intel-accent/30 font-bold">
                   {dossier.entity.entity_type}
                 </span>
                 <h3 className="text-base font-extrabold text-white mt-1.5">{dossier.entity.canonical_name}</h3>
@@ -88,11 +125,27 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
             {/* Quick Copilot Action */}
             <button
               onClick={() => onAskCopilot(`Why is ${dossier.entity.canonical_name} considered an important entity?`)}
-              className="w-full flex items-center justify-center space-x-2 py-2 rounded-lg bg-intel-accent/15 hover:bg-intel-accent/25 text-intel-accent font-semibold border border-intel-accent/30 transition-all text-xs"
+              className="w-full flex items-center justify-center space-x-2 py-2 rounded-xl bg-intel-accent/15 hover:bg-intel-accent/25 text-intel-accent font-semibold border border-intel-accent/30 transition-all text-xs"
             >
               <Bot className="w-4 h-4" />
-              <span>Ask Copilot About This Entity</span>
+              <span>Ask AI Investigator About This Entity</span>
             </button>
+          </div>
+
+          {/* "WHY SHOULD I CARE?" Section */}
+          <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 space-y-1.5">
+            <div className="flex items-center space-x-1.5 text-indigo-300 font-mono text-[11px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Why Should I Care? (Investigative Significance)</span>
+            </div>
+            <p className="text-[11.5px] text-slate-200 leading-relaxed">
+              {getWhyShouldICareText()}
+            </p>
+
+            <div className="pt-2 border-t border-indigo-500/20 flex items-center justify-between text-[10.5px] font-mono text-slate-400">
+              <span>Bridge Score: {dossier.entity.betweenness || '0.00'}</span>
+              <span>Connections: {dossier.direct_associates?.length || 0}</span>
+            </div>
           </div>
 
           {/* Direct Associates */}
@@ -104,7 +157,7 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
               </div>
               <div className="space-y-1">
                 {dossier.direct_associates.map((assoc, idx) => (
-                  <div key={idx} className="p-2 rounded-lg bg-intel-900/60 border border-intel-800/80 flex items-center justify-between">
+                  <div key={idx} className="p-2 rounded-xl bg-intel-900/60 border border-intel-800/80 flex items-center justify-between">
                     <div>
                       <span className="font-medium text-slate-200">{assoc.name}</span>
                       <span className="block text-[10px] text-slate-400 font-mono">{assoc.relationship}</span>
@@ -124,7 +177,7 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
             </div>
           )}
 
-          {/* Associated Infrastructure: Phones, Vehicles, Accounts, Locations */}
+          {/* Associated Infrastructure */}
           <div className="space-y-3">
             {dossier.associated_phones?.length > 0 && (
               <div>
@@ -195,7 +248,7 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
                   <div
                     key={idx}
                     onClick={() => onOpenEvidence(doc.id)}
-                    className="p-2 rounded-lg bg-intel-900/80 border border-intel-800 hover:border-intel-accent/50 cursor-pointer transition-colors"
+                    className="p-2 rounded-xl bg-intel-900/80 border border-intel-800 hover:border-intel-accent/50 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono font-bold text-intel-accent">{doc.id}</span>

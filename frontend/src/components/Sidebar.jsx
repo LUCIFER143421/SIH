@@ -2,76 +2,97 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   Network, 
-  Bot, 
-  AlertTriangle, 
-  Users, 
-  GitMerge, 
+  Clock, 
+  CreditCard, 
+  Target, 
   FileText, 
-  Sliders, 
-  Info,
-  Clock
+  GitMerge, 
+  AlertTriangle, 
+  Bot, 
+  ShieldCheck, 
+  HelpCircle
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, alertCount, candidateCount }) {
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'network', label: 'Network Explorer', icon: Network },
-    { id: 'copilot', label: 'Investigation Copilot', icon: Bot, isWow: true },
-    { id: 'alerts', label: 'Suspicious Alerts', icon: AlertTriangle, badge: alertCount },
-    { id: 'entities', label: 'Entities & Dossiers', icon: Users },
-    { id: 'resolution', label: 'Entity Resolution', icon: GitMerge, badge: candidateCount },
-    { id: 'documents', label: 'Ingestion & Docs', icon: FileText },
-    { id: 'transparency', label: 'AI Transparency & Eval', icon: Info },
+export default function Sidebar({ activeTab, setActiveTab, alertCount = 0, candidateCount = 0, onOpenTutorial }) {
+  const navSections = [
+    {
+      groupTitle: 'INVESTIGATE',
+      items: [
+        { id: 'dashboard', label: 'Case Overview', icon: LayoutDashboard },
+        { id: 'network', label: 'Network Intelligence', icon: Network },
+        { id: 'timeline', label: 'Time Machine', icon: Clock },
+        { id: 'financial', label: 'Money Flow (Hawala)', icon: CreditCard },
+        { id: 'leads', label: 'Investigative Leads', icon: Target }
+      ]
+    },
+    {
+      groupTitle: 'VERIFY',
+      items: [
+        { id: 'documents', label: 'Evidence Records', icon: FileText },
+        { id: 'resolution', label: 'Entity Resolution', icon: GitMerge, badge: candidateCount },
+        { id: 'alerts', label: 'Anomaly Center', icon: AlertTriangle, badge: alertCount, badgeColor: 'bg-red-500/30 text-red-300 border-red-500/40' }
+      ]
+    },
+    {
+      groupTitle: 'ASSIST',
+      items: [
+        { id: 'copilot', label: 'AI Investigator', icon: Bot },
+        { id: 'transparency', label: 'AI Transparency', icon: ShieldCheck }
+      ]
+    }
   ];
 
   return (
-    <aside className="w-64 border-r border-intel-800 bg-intel-950 flex flex-col justify-between shrink-0 select-none">
-      <div className="p-3 space-y-1">
-        <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-          Intelligence Workspace
-        </div>
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                isActive
-                  ? 'bg-intel-accent/15 text-intel-accent border border-intel-accent/30 shadow-sm'
-                  : 'text-slate-300 hover:bg-intel-900 hover:text-white border border-transparent'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-intel-accent' : 'text-slate-400'}`} />
-                <span>{item.label}</span>
-              </div>
+    <aside className="w-64 bg-[#080b11] border-r border-intel-800/80 flex flex-col justify-between select-none shrink-0">
+      <div className="p-4 space-y-5 overflow-y-auto">
+        {navSections.map((section, sIdx) => (
+          <div key={sIdx} className="space-y-1.5">
+            <div className="px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-500">
+              {section.groupTitle}
+            </div>
 
-              {item.isWow && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  AGENTIC
-                </span>
-              )}
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-all ${
+                      isActive
+                        ? 'bg-intel-accent/15 text-intel-accent border border-intel-accent/40 font-bold shadow-md shadow-intel-accent/10'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-intel-900 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 truncate">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-intel-accent' : 'text-slate-400'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
 
-              {item.badge > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-intel-crimson/20 text-intel-crimson border border-intel-crimson/40">
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+                    {item.badge > 0 && (
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold border ${item.badgeColor || 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Case Overview Card in Sidebar */}
-      <div className="p-3 m-3 rounded-xl bg-intel-900/60 border border-intel-800 text-xs">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="font-semibold text-slate-200">Active Case</span>
-          <span className="text-[9px] px-1.5 py-0.2 rounded bg-intel-emerald/20 text-intel-emerald font-mono">ACTIVE</span>
+      {/* Bottom Responsible AI & Tutorial Link */}
+      <div className="p-4 border-t border-intel-800/80 bg-intel-950/60 space-y-2 text-[11px] font-mono">
+        <div className="flex items-center justify-between text-slate-400">
+          <span className="text-[10px] text-slate-500">SIH 2026 PS 26189</span>
+          <span className="text-[10px] text-emerald-400 font-bold">MHA Prototype</span>
         </div>
-        <p className="text-slate-300 font-medium truncate">Op ShadowNet</p>
-        <p className="text-[11px] text-slate-400 mt-1">Dimapur-Kolkata Contraband Syndicate</p>
+
+        <div className="p-2.5 rounded-xl bg-intel-900 border border-intel-800 text-slate-400 text-[10.5px] leading-snug">
+          🛡️ <strong>Decision-Support Mode:</strong> Human verification required before formal legal action.
+        </div>
       </div>
     </aside>
   );

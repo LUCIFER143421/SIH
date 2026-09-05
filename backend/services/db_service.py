@@ -84,7 +84,7 @@ class DatabaseService:
                 relationship_type TEXT NOT NULL,
                 confidence REAL DEFAULT 1.0,
                 timestamp TEXT,
-                document_id TEXT NOT NULL,
+                document_id TEXT,
                 evidence_snippet TEXT,
                 metadata TEXT,
                 FOREIGN KEY(source_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
@@ -252,11 +252,20 @@ class DatabaseService:
                             metadata: Optional[Dict] = None) -> str:
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            
+            # Ensure referenced document exists in documents table to satisfy foreign key constraint
+            clean_doc_id = doc_id.strip() if doc_id and isinstance(doc_id, str) else None
+            if clean_doc_id:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO documents (id, title, source_type, content, metadata) VALUES (?, ?, 'INTEL', '', '{}')",
+                    (clean_doc_id, f"Document {clean_doc_id}")
+                )
+
             cursor.execute(
                 """INSERT OR REPLACE INTO relationships 
                    (id, source_entity_id, target_entity_id, relationship_type, confidence, timestamp, document_id, evidence_snippet, metadata)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (rel_id, source_id, target_id, rel_type.upper(), confidence, timestamp, doc_id, evidence_snippet, json.dumps(metadata or {}))
+                (rel_id, source_id, target_id, rel_type.upper(), confidence, timestamp, clean_doc_id, evidence_snippet, json.dumps(metadata or {}))
             )
             conn.commit()
         return rel_id
@@ -274,7 +283,7 @@ class DatabaseService:
                     "relationship_type": r["relationship_type"],
                     "confidence": r["confidence"],
                     "timestamp": r["timestamp"],
-                    "document_id": r["document_id"],
+                    "document_id": r["document_id"] or "",
                     "evidence_snippet": r["evidence_snippet"],
                     "metadata": json.loads(r["metadata"]) if r["metadata"] else {}
                 }
@@ -306,7 +315,7 @@ class DatabaseService:
                     "relationship_type": r["relationship_type"],
                     "confidence": r["confidence"],
                     "timestamp": r["timestamp"],
-                    "document_id": r["document_id"],
+                    "document_id": r["document_id"] or "",
                     "evidence_snippet": r["evidence_snippet"],
                     "metadata": json.loads(r["metadata"]) if r["metadata"] else {}
                 }

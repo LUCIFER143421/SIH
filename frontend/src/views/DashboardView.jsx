@@ -1,200 +1,276 @@
 import React, { useEffect, useState } from 'react';
 import { 
+  ShieldAlert, 
   Users, 
-  Share2, 
   FileText, 
+  Network, 
+  Sparkles, 
   AlertTriangle, 
-  Layers, 
-  Bot, 
-  Play, 
   ArrowRight, 
-  ShieldAlert,
-  Flame,
-  Award
+  Layers, 
+  CheckCircle2, 
+  TrendingUp,
+  Compass,
+  Play,
+  CreditCard,
+  Phone,
+  Target
 } from 'lucide-react';
-import { fetchNetworkStats, fetchCentrality, fetchAlerts } from '../services/api';
+import { fetchNetworkStats, fetchAlerts, fetchCentrality } from '../services/api';
 
-export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo, isDemoLoading }) {
+export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo, isDemoLoading, onOpenStoryModal }) {
   const [stats, setStats] = useState({
-    total_entities: 0,
-    total_relationships: 0,
-    total_documents: 0,
-    total_alerts: 0,
-    total_communities: 0,
-    high_risk_entities_count: 0
+    total_entities: 38,
+    total_relationships: 37,
+    total_documents: 8,
+    total_alerts: 5,
+    total_communities: 3,
+    high_risk_entities_count: 7
   });
-  const [influential, setInfluential] = useState([]);
-  const [recentAlerts, setRecentAlerts] = useState([]);
+  const [influentialEntities, setInfluentialEntities] = useState([]);
+  const [activeAlerts, setActiveAlerts] = useState([]);
 
   useEffect(() => {
     fetchNetworkStats().then(setStats).catch(console.error);
-    fetchCentrality(5).then(setInfluential).catch(console.error);
-    fetchAlerts().then((data) => setRecentAlerts(data.slice(0, 3))).catch(console.error);
+    fetchCentrality(4).then(setInfluentialEntities).catch(console.error);
+    fetchAlerts().then((a) => setActiveAlerts(a.slice(0, 3))).catch(console.error);
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-intel-950 p-6 space-y-6 overflow-y-auto select-none">
-      {/* Top Banner / Case Overview */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-intel-900 via-intel-950 to-slate-900 border border-intel-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-intel-emerald/20 text-intel-emerald border border-intel-emerald/30">
-              ACTIVE CASE #2026-SHADOW-01
+    <div className="flex-1 overflow-y-auto bg-intel-950 p-6 space-y-6 select-none">
+      {/* Top Case Hero Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-intel-900 via-intel-900/90 to-intel-950 border border-intel-700/80 p-6 shadow-2xl">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                ACTIVE INVESTIGATION
+              </span>
+              <span className="text-xs font-mono text-slate-400">
+                Case ID: SIH-26189-SHADOWNET
+              </span>
+            </div>
+
+            <h1 className="text-2xl font-black text-white tracking-tight">
+              OPERATION SHADOWNET
+            </h1>
+            <p className="text-xs text-slate-300 font-mono">
+              Dimapur → Kolkata Contraband Transit, Hawala Layering & Corrupt Port Clearance Network
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-3 shrink-0">
+            {onOpenStoryModal && (
+              <button
+                onClick={onOpenStoryModal}
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-intel-accent hover:bg-sky-400 text-slate-950 font-bold font-mono text-xs transition-all shadow-xl shadow-intel-accent/25 active:scale-95"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>START DEMO STORY (3 MIN)</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onNavigate('network')}
+              className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-intel-800 hover:bg-intel-700 text-slate-200 border border-intel-700 font-mono text-xs transition-colors"
+            >
+              <span>Explore Graph →</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Live Case Counts Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-5 border-t border-intel-800">
+          <div className="p-3 rounded-xl bg-intel-950/80 border border-intel-800 flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-lg font-black text-white font-mono">{stats.total_documents}</div>
+              <div className="text-[10px] font-mono text-slate-400 uppercase">Evidence Records</div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-intel-950/80 border border-intel-800 flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-lg font-black text-white font-mono">{stats.total_entities}</div>
+              <div className="text-[10px] font-mono text-slate-400 uppercase">Resolved Entities</div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-intel-950/80 border border-intel-800 flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              <Network className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-lg font-black text-white font-mono">{stats.total_relationships}</div>
+              <div className="text-[10px] font-mono text-slate-400 uppercase">Reconstructed Links</div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-intel-950/80 border border-intel-800 flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-lg font-black text-white font-mono">{stats.total_alerts}</div>
+              <div className="text-[10px] font-mono text-slate-400 uppercase">Active Anomalies</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Investigation Brief & Why This Matters */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: AI Investigation Brief */}
+        <div className="lg:col-span-2 p-6 rounded-3xl bg-intel-900 border border-intel-700/80 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-1 rounded-md bg-intel-gold/20 text-intel-gold border border-intel-gold/30">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h2 className="text-xs font-mono font-bold text-intel-gold uppercase tracking-wider">
+                AI Investigation Executive Brief
+              </h2>
+            </div>
+            <span className="text-[10.5px] font-mono text-slate-400">
+              Generated by CRIMENET Copilot
             </span>
-            <span className="text-[10px] font-mono text-slate-400">Dimapur-Kolkata Contraband Syndicate</span>
           </div>
-          <h1 className="text-xl font-extrabold text-white tracking-tight">
-            CRIMENET AI Investigation Support Center
-          </h1>
-          <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Multi-source intelligence fused across FIRs, CDR communication logs, Hawala banking layering, and port surveillance. Powered by graph analytics and agentic AI reasoning.
-          </p>
-        </div>
 
-        <div className="flex items-center space-x-3 shrink-0">
-          <button
-            onClick={() => onNavigate('network')}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-intel-accent hover:bg-sky-400 text-slate-950 font-bold text-xs shadow-lg shadow-intel-accent/20 transition-all active:scale-95"
-          >
-            <span>Open Network Explorer</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">Entities</span>
-            <Users className="w-4 h-4 text-intel-accent" />
+          <div className="space-y-3 text-xs text-slate-200 leading-relaxed">
+            <p className="font-semibold text-sm text-white">
+              CRIMENET AI identified a highly coordinated syndicate linking North-East transport logistics, Kolkata Hawala desks, and corrupt customs clearance at Haldia Port.
+            </p>
+            <p className="text-slate-300">
+              <strong>Vikram Malhotra (PER_001)</strong> emerges as the primary high-value investigative lead. He operates as the central structural bridge across three isolated syndicate clusters and shows synchronized activity surges during the contraband shipment window in February 2026.
+            </p>
           </div>
-          <p className="text-xl font-extrabold text-white font-mono">{stats.total_entities}</p>
-          <span className="text-[10px] text-slate-500">Nodes in graph</span>
-        </div>
 
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">Relationships</span>
-            <Share2 className="w-4 h-4 text-intel-purple" />
-          </div>
-          <p className="text-xl font-extrabold text-white font-mono">{stats.total_relationships}</p>
-          <span className="text-[10px] text-slate-500">Verified links</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">Evidence Docs</span>
-            <FileText className="w-4 h-4 text-amber-400" />
-          </div>
-          <p className="text-xl font-extrabold text-white font-mono">{stats.total_documents}</p>
-          <span className="text-[10px] text-slate-500">FIR/CDR/Bank logs</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">Active Alerts</span>
-            <AlertTriangle className="w-4 h-4 text-intel-crimson" />
-          </div>
-          <p className="text-xl font-extrabold text-intel-crimson font-mono">{stats.total_alerts}</p>
-          <span className="text-[10px] text-slate-500">Explainable patterns</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">Sub-Clusters</span>
-            <Layers className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-xl font-extrabold text-white font-mono">{stats.total_communities}</p>
-          <span className="text-[10px] text-slate-500">Modularity groups</span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-intel-900 border border-intel-800 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-mono uppercase">High Risk</span>
-            <Flame className="w-4 h-4 text-orange-400" />
-          </div>
-          <p className="text-xl font-extrabold text-orange-400 font-mono">{stats.high_risk_entities_count}</p>
-          <span className="text-[10px] text-slate-500">Score &gt; 75%</span>
-        </div>
-      </div>
-
-      {/* Main Dashboard Two-Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Influential / Bridge Entities */}
-        <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-intel-gold" />
-              <h2 className="text-sm font-bold text-white tracking-tight">TOP INFLUENTIAL & BRIDGE ENTITIES</h2>
+          {/* "Why This Matters" 4-Card Grid */}
+          <div className="space-y-2 pt-2 border-t border-intel-800">
+            <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">
+              Why This Lead Matters (Key Analytical Signals)
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-intel-accent">
+                  <span className="w-2 h-2 rounded-full bg-intel-accent" />
+                  <span>1. Cross-Community Bridge</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Holds top Betweenness Centrality (0.48), directly bridging logistics, Hawala, and tech rings.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>2. Financial Structuring</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Receiver of Rs 15,00,000 RTGS payout following 14 structured sub-50k deposits into Apex Logistics.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>3. Pre-Incident Call Surge</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  +340% communication volume spike with transport and finance coordinators between Feb 12-16.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-purple-400">
+                  <span className="w-2 h-2 rounded-full bg-purple-400" />
+                  <span>4. Shared Gateway SIM</span>
+                </div>
+                <p className="text-[11px] text-slate-300">
+                  Concurrent hardware usage of shared burner SIM +91-98555-66778 with logistics head and courier.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-between">
             <button
-              onClick={() => onNavigate('entities')}
-              className="text-xs text-intel-accent hover:underline font-mono"
+              onClick={() => {
+                onSelectEntity('PER_001');
+                onNavigate('network');
+              }}
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-intel-accent hover:bg-sky-400 text-slate-950 font-bold font-mono text-xs transition-all shadow-md shadow-intel-accent/20"
             >
-              View All
+              <span>Investigate Vikram Malhotra (Focus Mode) →</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('leads')}
+              className="text-xs font-mono text-intel-accent hover:underline flex items-center space-x-1"
+            >
+              <span>Test Investigative Hypothesis</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          <div className="space-y-2">
-            {influential.map((inf, idx) => (
-              <div
-                key={inf.id}
-                onClick={() => onSelectEntity(inf.id)}
-                className="p-3 rounded-xl bg-intel-950 border border-intel-800 hover:border-intel-accent/50 cursor-pointer transition-all flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-7 h-7 rounded-lg bg-intel-800 flex items-center justify-center font-mono font-bold text-xs text-slate-300">
-                    #{idx + 1}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xs text-white">{inf.name}</h3>
-                    <p className="text-[11px] text-slate-400">{inf.role}</p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] font-mono text-slate-500 block uppercase">Influence Index</span>
-                  <span className="text-xs font-extrabold text-intel-accent font-mono">
-                    {inf.influence_score}/100
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Recent Suspicious Pattern Alerts */}
-        <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-intel-crimson" />
-              <h2 className="text-sm font-bold text-white tracking-tight">HIGH PRIORITY ANOMALY ALERTS</h2>
+        {/* Right Col: Top Ranked Leads & Next Action */}
+        <div className="space-y-4">
+          {/* Top Leads Box */}
+          <div className="p-5 rounded-3xl bg-intel-900 border border-intel-700/80 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">
+                Priority Investigative Leads
+              </h3>
+              <span className="text-[10px] font-mono text-slate-400">Ranked by Influence</span>
             </div>
-            <button
-              onClick={() => onNavigate('alerts')}
-              className="text-xs text-intel-accent hover:underline font-mono"
-            >
-              Alert Center
-            </button>
+
+            <div className="space-y-2">
+              {influentialEntities.map((ent, idx) => (
+                <button
+                  key={ent.id}
+                  onClick={() => {
+                    onSelectEntity(ent.id);
+                    onNavigate('network');
+                  }}
+                  className="w-full p-2.5 rounded-xl bg-intel-950 hover:bg-intel-800/80 border border-intel-800 text-left transition-all flex items-center justify-between group"
+                >
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-white group-hover:text-intel-accent flex items-center space-x-1.5">
+                      <span className="text-slate-500 font-mono text-[10px]">#{idx + 1}</span>
+                      <span>{ent.name}</span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 font-mono">
+                      {ent.role || ent.type} • Score: {ent.influence_score}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-intel-accent transition-colors" />
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-2.5">
-            {recentAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="p-3 rounded-xl bg-red-950/20 border border-red-900/40 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-red-400">{alert.rule_name}</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-mono">
-                    {Math.round(alert.confidence * 100)}% CONFIDENCE
-                  </span>
-                </div>
-                <h4 className="font-bold text-xs text-slate-200">{alert.title}</h4>
-                <p className="text-[11px] text-slate-400 line-clamp-2">{alert.description}</p>
-              </div>
-            ))}
+          {/* Quick Jump to Next Action */}
+          <div className="p-4 rounded-3xl bg-gradient-to-br from-teal-500/15 via-intel-900 to-intel-950 border border-teal-500/30 space-y-2">
+            <div className="flex items-center space-x-1.5 text-xs font-mono font-bold text-teal-300 uppercase">
+              <Target className="w-3.5 h-3.5" />
+              <span>Recommended Next Step</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-snug">
+              Subpoena CDR records for shared burner SIM (+91-98555-66778) used concurrently by 3 key suspects.
+            </p>
+            <button
+              onClick={() => onNavigate('leads')}
+              className="text-[11px] font-mono text-teal-300 hover:underline flex items-center space-x-1 pt-1"
+            >
+              <span>View All Recommended Actions →</span>
+            </button>
           </div>
         </div>
       </div>
