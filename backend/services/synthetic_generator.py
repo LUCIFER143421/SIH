@@ -28,6 +28,7 @@ def generate_synthetic_investigation() -> Dict[str, Any]:
         {"id": "PER_013", "name": "Deepak Chawla", "type": "PERSON", "risk_score": 0.42, "metadata": {"role": "Fleet Driver", "aliases": ["Deepak C."]}},
         {"id": "PER_014", "name": "Imran Khan", "type": "PERSON", "risk_score": 0.58, "metadata": {"role": "Cross-border Courier", "aliases": ["Imran Bhai"]}},
         {"id": "PER_015", "name": "Bikash Roy", "type": "PERSON", "risk_score": 0.48, "metadata": {"role": "Freight Handler", "aliases": ["B. Roy"]}},
+        {"id": "PER_016", "name": "Rahul Sharma", "type": "PERSON", "risk_score": 0.48, "metadata": {"role": "Freight Logistics Coordinator", "aliases": ["R. Sharma"]}},
         
         # --- Phone Numbers ---
         {"id": "PHO_001", "name": "+91-98765-43210", "type": "PHONE", "risk_score": 0.90, "metadata": {"carrier": "Airtel", "note": "Primary Burner Phone (Vikram)"}},
@@ -171,7 +172,8 @@ def generate_synthetic_investigation() -> Dict[str, Any]:
         {"id": "REL_034", "source": "PER_010", "target": "LOC_001", "type": "WORKS_FOR", "confidence": 0.85, "timestamp": "2026-01-14", "doc": "DOC_FIR_001", "snippet": "Karan Singhania oversees warehouse staff at Dimapur Market."},
         {"id": "REL_035", "source": "PER_010", "target": "PER_002", "type": "ASSOCIATED_WITH", "confidence": 0.81, "timestamp": "2026-01-14", "doc": "DOC_FIR_001", "snippet": "Karan Singhania reports stock movements to Rajesh Thapa."},
         {"id": "REL_036", "source": "PER_011", "target": "ORG_003", "type": "WORKS_FOR", "confidence": 0.78, "timestamp": "2026-01-18", "doc": "DOC_FIR_001", "snippet": "R. Sharma works as freight coordinator for Eastern Cargo Movers."},
-        {"id": "REL_037", "source": "PER_011", "target": "PER_002", "type": "COMMUNICATED_WITH", "confidence": 0.80, "timestamp": "2026-01-20", "doc": "DOC_FIR_001", "snippet": "R. Sharma contacted Rajesh Thapa regarding consignment clearances."}
+        {"id": "REL_037", "source": "PER_011", "target": "PER_002", "type": "COMMUNICATED_WITH", "confidence": 0.80, "timestamp": "2026-01-20", "doc": "DOC_FIR_001", "snippet": "R. Sharma contacted Rajesh Thapa regarding consignment clearances."},
+        {"id": "REL_038", "source": "PER_016", "target": "ORG_003", "type": "ASSOCIATED_WITH", "confidence": 0.82, "timestamp": "2026-01-18", "doc": "DOC_FIR_001", "snippet": "Consignment waybill listed Rahul Sharma as shipping contact for Eastern Cargo Movers."}
     ]
 
     # 4. RESOLUTION CANDIDATES (Aliases to detect & resolve)
@@ -179,9 +181,9 @@ def generate_synthetic_investigation() -> Dict[str, Any]:
         {
             "id": "RES_001",
             "source_id": "PER_011",
-            "target_id": "PER_001",
-            "similarity": 0.75,
-            "reason": "Name phonetic similarity ('R. Sharma' vs 'Rahul Sharma' / associate link to Vikram Malhotra)"
+            "target_id": "PER_016",
+            "similarity": 0.88,
+            "reason": "Abbreviated initial & surname match ('R. Sharma' vs 'Rahul Sharma') with shared transport affiliate (Eastern Cargo Movers)"
         }
     ]
 

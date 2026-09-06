@@ -76,11 +76,9 @@ I analyze ingested FIRs, CDR communications, banking transfers, and surveillance
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-
-      // Automatically trigger graph highlights if path or entities found
-      if (response.highlight_node_ids?.length > 0 && onHighlightGraph) {
-        onHighlightGraph(response.highlight_node_ids, response.highlight_edge_ids);
-      }
+      // NOTE: We intentionally do NOT auto-call onHighlightGraph here because
+      // that would navigate the user away from the Copilot tab to the Network tab.
+      // The user can click the "Highlight Entities on Graph" button manually.
     } catch (err) {
       console.error('Copilot query error:', err);
       setMessages((prev) => [

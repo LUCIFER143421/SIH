@@ -18,20 +18,29 @@ class LocalLLMService:
         if self.provider == "deterministic":
             return None
 
+        history_str = ""
+        if conversation_history and len(conversation_history) > 0:
+            formatted_turns = []
+            for h in conversation_history[-4:]:
+                role = "Investigator" if h.get("role") == "user" else "Copilot"
+                formatted_turns.append(f"{role}: {h.get('content', '')}")
+            history_str = "PREVIOUS CONVERSATION CONTEXT:\n" + "\n".join(formatted_turns) + "\n\n"
+
         prompt = f"""
 {COPILOT_SYSTEM_PROMPT}
 
-VERIFIED TOOL DATA (GROUND TRUTH):
+{history_str}VERIFIED CASE INTELLIGENCE & TOOL DATA:
 {tool_context}
 
-INVESTIGATOR QUERY:
+CURRENT INVESTIGATOR QUESTION:
 {user_query}
 
-Provide a grounded, professional investigation analysis based exclusively on the verified tool data above.
+Respond directly to the investigator in a natural, professional human officer tone, addressing their exact question with grounded case details.
 """
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            timeout = httpx.Timeout(5.0, connect=1.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 res = await client.post(
                     f"{self.base_url}/api/generate",
                     json={
@@ -39,16 +48,18 @@ Provide a grounded, professional investigation analysis based exclusively on the
                         "prompt": prompt,
                         "stream": False,
                         "options": {
-                            "temperature": 0.1,  # Low temperature to prevent hallucination
-                            "num_predict": 400
+                            "temperature": 0.3,
+                            "num_predict": 450
                         }
                     }
                 )
                 if res.status_code == 200:
                     data = res.json()
-                    return data.get("response", "").strip()
+                    resp_text = data.get("response", "").strip()
+                    if resp_text and len(resp_text) > 10:
+                        return resp_text
         except Exception:
-            # Ollama not running or model not pulled
+            # Ollama offline or unavailable
             pass
         return None
 

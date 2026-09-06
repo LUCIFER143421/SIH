@@ -45,6 +45,14 @@ export default function NetworkExplorerView({
     OWNERSHIP: true
   });
 
+  // Sync focusPerson when selectedEntityId changes from outside (e.g., global search)
+  useEffect(() => {
+    if (selectedEntityId && selectedEntityId !== focusPerson) {
+      setFocusPerson(selectedEntityId);
+      setGraphMode('focus'); // Switch to focus mode to center the searched entity
+    }
+  }, [selectedEntityId]);
+
   useEffect(() => {
     loadGraph();
     fetchEntities('PERSON').then((persons) => {

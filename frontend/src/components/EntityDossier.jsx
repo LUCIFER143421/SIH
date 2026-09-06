@@ -14,17 +14,21 @@ import {
   Sparkles,
   HelpCircle,
   TrendingUp,
-  Target
+  Target,
+  AlertCircle
 } from 'lucide-react';
 import { fetchEntityDossier } from '../services/api';
 
 export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAskCopilot }) {
   const [dossier, setDossier] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!entityId) return;
     setLoading(true);
+    setDossier(null);
+    setError(null);
     fetchEntityDossier(entityId)
       .then((data) => {
         setDossier(data);
@@ -32,6 +36,7 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
       })
       .catch((err) => {
         console.error('Error fetching dossier:', err);
+        setError(err?.response?.data?.detail || err?.message || 'Failed to load entity details.');
         setLoading(false);
       });
   }, [entityId]);
@@ -260,6 +265,25 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
               </div>
             </div>
           )}
+        </div>
+      ) : error ? (
+        <div className="p-6 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto" />
+          <p className="text-xs text-red-400 font-mono font-semibold">Failed to Load Dossier</p>
+          <p className="text-[11px] text-slate-400">{error}</p>
+          <p className="text-[10px] text-slate-500 font-mono">Entity ID: {entityId}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setError(null);
+              fetchEntityDossier(entityId)
+                .then((data) => { setDossier(data); setLoading(false); })
+                .catch((err) => { setError(err?.response?.data?.detail || err?.message || 'Failed to load entity details.'); setLoading(false); });
+            }}
+            className="px-3 py-1.5 rounded-lg bg-intel-800 hover:bg-intel-700 text-slate-300 text-xs font-mono border border-intel-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       ) : (
         <div className="p-6 text-center text-slate-500 text-xs">Entity details not available.</div>

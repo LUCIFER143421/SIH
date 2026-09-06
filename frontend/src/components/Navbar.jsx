@@ -1,23 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Shield, 
-  Search, 
-  Sparkles, 
   RotateCcw, 
-  Play, 
-  AlertCircle,
-  HelpCircle,
-  Cpu
+  Play
 } from 'lucide-react';
 
-export default function Navbar({ onStartDemo, onReset, onSearch, isDemoLoading, systemInfo, onOpenStoryModal }) {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (onSearch) onSearch(searchQuery);
-  };
-
+export default function Navbar({ onReset, isDemoLoading, systemInfo, onOpenStoryModal }) {
   return (
     <header className="h-16 bg-[#080b11] border-b border-intel-800 px-6 flex items-center justify-between z-20 select-none shrink-0">
       {/* Left: Branding & Case Status */}
@@ -50,20 +38,6 @@ export default function Navbar({ onStartDemo, onReset, onSearch, isDemoLoading, 
           <span className="text-slate-400">Case:</span>
           <span className="text-white font-bold">Operation ShadowNet</span>
         </div>
-      </div>
-
-      {/* Center: Global Search */}
-      <div className="hidden lg:block w-96">
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <input
-            type="text"
-            placeholder="Search suspect, phone (+91), vehicle, account..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-intel-900 border border-intel-700/80 rounded-xl pl-9 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-intel-accent transition-colors"
-          />
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-        </form>
       </div>
 
       {/* Right: Actions */}
