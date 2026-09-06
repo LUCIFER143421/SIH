@@ -46,8 +46,8 @@ export default function App() {
       } else {
         refreshCounters();
       }
-    }).catch(() => {
-      handleStartDemo();
+    }).catch((err) => {
+      console.warn('Backend connection issue or graph data not ready:', err);
     });
     fetchSystemInfo().then(setSystemInfo).catch(console.error);
   }, []);
@@ -95,20 +95,11 @@ export default function App() {
     setActiveTab('network');
   };
 
-  const handleGlobalSearch = (query) => {
-    if (query) {
-      setSelectedEntityId(query);
-      setActiveTab('network');
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen w-screen bg-[#080b11] text-slate-100 overflow-hidden font-sans">
       {/* Top Navigation Bar */}
       <Navbar
-        onStartDemo={handleStartDemo}
         onReset={handleReset}
-        onSearch={handleGlobalSearch}
         isDemoLoading={isDemoLoading}
         systemInfo={systemInfo}
         onOpenStoryModal={() => setIsStoryModalOpen(true)}
