@@ -5,6 +5,7 @@ import {
   Clock, 
   CreditCard, 
   Target, 
+  Users,
   FileText, 
   GitMerge, 
   AlertTriangle, 
@@ -22,7 +23,8 @@ export default function Sidebar({ activeTab, setActiveTab, alertCount = 0, candi
         { id: 'network', label: 'Network Intelligence', icon: Network },
         { id: 'timeline', label: 'Time Machine', icon: Clock },
         { id: 'financial', label: 'Money Flow (Hawala)', icon: CreditCard },
-        { id: 'leads', label: 'Investigative Leads', icon: Target }
+        { id: 'leads', label: 'Investigative Leads', icon: Target },
+        { id: 'entities', label: 'Entity Registry', icon: Users }
       ]
     },
     {

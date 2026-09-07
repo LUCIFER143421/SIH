@@ -38,6 +38,16 @@ export default function Navbar({ onReset, isDemoLoading, systemInfo, onOpenStory
           <span className="text-slate-400">Case:</span>
           <span className="text-white font-bold">Operation ShadowNet</span>
         </div>
+
+        {/* Persistent Synthetic Demo Data Disclaimer */}
+        <div 
+          title="Simulated case file with fictional entities for demonstration. AI-generated leads require human investigator verification."
+          className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[10.5px] font-mono text-amber-300"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="font-semibold">SYNTHETIC DEMO DATA</span>
+          <span className="text-amber-400/80">• Fictional Case • Human Verification Required</span>
+        </div>
       </div>
 
       {/* Right: Actions */}

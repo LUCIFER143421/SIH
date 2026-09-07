@@ -12,6 +12,7 @@ import {
   FileText
 } from 'lucide-react';
 import { fetchSystemInfo } from '../services/api';
+import MetricTooltip from './MetricTooltip';
 
 export default function TransparencyView() {
   const [sysInfo, setSysInfo] = useState(null);
@@ -51,7 +52,10 @@ export default function TransparencyView() {
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-emerald-400 font-bold">✓</span>
-              <span>Detects mathematical anomalies: Betweenness bridges, CDR surges, and Hawala structuring.</span>
+              <span className="flex items-center">
+                <span>Detects mathematical anomalies: Betweenness bridges, CDR surges, and Hawala structuring.</span>
+                <MetricTooltip term="betweenness" />
+              </span>
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-emerald-400 font-bold">✓</span>

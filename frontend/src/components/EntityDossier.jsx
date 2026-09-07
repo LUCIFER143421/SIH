@@ -18,6 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { fetchEntityDossier } from '../services/api';
+import MetricTooltip from './MetricTooltip';
 
 export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAskCopilot }) {
   const [dossier, setDossier] = useState(null);
@@ -148,8 +149,14 @@ export default function EntityDossier({ entityId, onClose, onOpenEvidence, onAsk
             </p>
 
             <div className="pt-2 border-t border-indigo-500/20 flex items-center justify-between text-[10.5px] font-mono text-slate-400">
-              <span>Bridge Score: {dossier.entity.betweenness || '0.00'}</span>
-              <span>Connections: {dossier.direct_associates?.length || 0}</span>
+              <span className="flex items-center">
+                <span>Bridge Score: {dossier.entity.betweenness || '0.00'}</span>
+                <MetricTooltip term="betweenness" />
+              </span>
+              <span className="flex items-center">
+                <span>Connections: {dossier.direct_associates?.length || 0}</span>
+                <MetricTooltip term="degree" />
+              </span>
             </div>
           </div>
 

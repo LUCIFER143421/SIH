@@ -17,6 +17,7 @@ import {
   Target
 } from 'lucide-react';
 import { fetchNetworkStats, fetchAlerts, fetchCentrality } from '../services/api';
+import MetricTooltip from '../components/MetricTooltip';
 
 export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo, isDemoLoading, onOpenStoryModal }) {
   const [stats, setStats] = useState({
@@ -29,11 +30,15 @@ export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo,
   });
   const [influentialEntities, setInfluentialEntities] = useState([]);
   const [activeAlerts, setActiveAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchNetworkStats().then(setStats).catch(console.error);
-    fetchCentrality(4).then(setInfluentialEntities).catch(console.error);
-    fetchAlerts().then((a) => setActiveAlerts(a.slice(0, 3))).catch(console.error);
+    setLoading(true);
+    Promise.all([
+      fetchNetworkStats().then(setStats).catch(console.error),
+      fetchCentrality(4).then(setInfluentialEntities).catch(console.error),
+      fetchAlerts().then((a) => setActiveAlerts(a.slice(0, 3))).catch(console.error)
+    ]).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -161,6 +166,7 @@ export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo,
                 <div className="flex items-center space-x-1.5 text-xs font-bold text-intel-accent">
                   <span className="w-2 h-2 rounded-full bg-intel-accent" />
                   <span>1. Cross-Community Bridge</span>
+                  <MetricTooltip term="betweenness" />
                 </div>
                 <p className="text-[11px] text-slate-300">
                   Holds top Betweenness Centrality (0.48), directly bridging logistics, Hawala, and tech rings.
@@ -225,34 +231,45 @@ export default function DashboardView({ onNavigate, onSelectEntity, onStartDemo,
           {/* Top Leads Box */}
           <div className="p-5 rounded-3xl bg-intel-900 border border-intel-700/80 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">
-                Priority Investigative Leads
+              <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                <span>Priority Investigative Leads</span>
+                <MetricTooltip term="influence" />
               </h3>
               <span className="text-[10px] font-mono text-slate-400">Ranked by Influence</span>
             </div>
 
             <div className="space-y-2">
-              {influentialEntities.map((ent, idx) => (
-                <button
-                  key={ent.id}
-                  onClick={() => {
-                    onSelectEntity(ent.id);
-                    onNavigate('network');
-                  }}
-                  className="w-full p-2.5 rounded-xl bg-intel-950 hover:bg-intel-800/80 border border-intel-800 text-left transition-all flex items-center justify-between group"
-                >
-                  <div className="space-y-0.5">
-                    <div className="text-xs font-bold text-white group-hover:text-intel-accent flex items-center space-x-1.5">
-                      <span className="text-slate-500 font-mono text-[10px]">#{idx + 1}</span>
-                      <span>{ent.name}</span>
+              {loading ? (
+                <div className="p-4 text-center text-slate-500 text-xs font-mono">
+                  Loading ranked leads...
+                </div>
+              ) : influentialEntities.length > 0 ? (
+                influentialEntities.map((ent, idx) => (
+                  <button
+                    key={ent.id}
+                    onClick={() => {
+                      onSelectEntity(ent.id);
+                      onNavigate('network');
+                    }}
+                    className="w-full p-2.5 rounded-xl bg-intel-950 hover:bg-intel-800/80 border border-intel-800 text-left transition-all flex items-center justify-between group"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-white group-hover:text-intel-accent flex items-center space-x-1.5">
+                        <span className="text-slate-500 font-mono text-[10px]">#{idx + 1}</span>
+                        <span>{ent.name}</span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-400 font-mono">
+                        {ent.role || ent.type} • Score: {ent.influence_score}
+                      </div>
                     </div>
-                    <div className="text-[10.5px] text-slate-400 font-mono">
-                      {ent.role || ent.type} • Score: {ent.influence_score}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-intel-accent transition-colors" />
-                </button>
-              ))}
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-intel-accent transition-colors" />
+                  </button>
+                ))
+              ) : (
+                <div className="p-4 text-center text-slate-500 text-xs">
+                  No entities ranked yet. Ingest documents or load the demo investigation.
+                </div>
+              )}
             </div>
           </div>
 

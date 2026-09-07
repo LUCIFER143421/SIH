@@ -104,6 +104,40 @@ def test_analytics_hypothesis_testing():
     assert "supporting_signals" in data
     assert data["confidence_percent"] > 50
 
+def test_analytics_hypothesis_dynamic_three_distinct_cases():
+    """
+    Tests that /api/analytics/test-hypothesis dynamically parses questions:
+    1. Real connected entities -> High confidence & verified link
+    2. Real but unconnected entities -> Low confidence & NO SIGNIFICANT LINK
+    3. Unknown non-existent entity -> UNVERIFIABLE / ENTITY NOT IN CASE FILE
+    """
+    # 1. Connected pair (Rajesh Thapa and Vikram Malhotra)
+    q1 = {"custom_statement": "Is Rajesh Thapa working for Vikram Malhotra?"}
+    res1 = client.post("/api/analytics/test-hypothesis", json=q1).json()
+    assert res1["assessment"] in ["STRONG CORROBORATED CONNECTION", "INDIRECT MULTI-HOP CONNECTION"]
+    assert res1["confidence_percent"] >= 70
+    assert len(res1["supporting_signals"]) >= 1
+
+    # 2. Real but unconnected pair (Sunil Mehta and Inspector S. K. Roy)
+    q2 = {"custom_statement": "Is Sunil Mehta coordinating with Inspector S. K. Roy?"}
+    res2 = client.post("/api/analytics/test-hypothesis", json=q2).json()
+    assert res2["assessment"] == "NO SIGNIFICANT LINK DETECTED"
+    assert res2["confidence_percent"] <= 30
+    assert len(res2["supporting_signals"]) == 0
+    assert len(res2["contradicting_signals"]) >= 1
+
+    # 3. Unknown entity (Johnathan Walker)
+    q3 = {"custom_statement": "Is Johnathan Walker financing the operation?"}
+    res3 = client.post("/api/analytics/test-hypothesis", json=q3).json()
+    assert res3["assessment"] == "UNVERIFIABLE / ENTITY NOT IN CASE FILE"
+    assert res3["confidence_percent"] <= 20
+    assert len(res3["supporting_signals"]) == 0
+
+    # Ensure all three responses are meaningfully distinct
+    assert res1["assessment"] != res2["assessment"]
+    assert res2["assessment"] != res3["assessment"]
+    assert res1["confidence_percent"] != res2["confidence_percent"]
+
 def test_analytics_hidden_intermediaries():
     response = client.get("/api/analytics/hidden-intermediaries")
     assert response.status_code == 200
@@ -140,6 +174,11 @@ def test_alerts_endpoint():
     assert "entity_ids" in first_alert
     assert "confidence" in first_alert
 
+    # Verify both seeded case_file and live_detection alerts are present
+    sources = [a.get("source") for a in data]
+    assert "case_file" in sources
+    assert "live_detection" in sources
+
 def test_entity_dossier_endpoint():
     response = client.get("/api/entities/PER_001/dossier")
     assert response.status_code == 200
@@ -162,6 +201,17 @@ def test_copilot_query_endpoint():
     assert "tool_traces" in data
     assert "highlight_node_ids" in data
     assert len(data["tool_traces"]) >= 1
+
+def test_copilot_out_of_domain_query():
+    payload = {
+        "query": "what is the capital of France?"
+    }
+    response = client.post("/api/copilot/query", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "OUT OF DOMAIN" in data["answer"] or "not have information" in data["answer"].lower()
+    assert data["confidence"] == 0.0
+    assert "NETWORK ANALYTICS SUMMARY" not in data["answer"]
 
 def test_system_info_endpoint():
     response = client.get("/api/system-info")

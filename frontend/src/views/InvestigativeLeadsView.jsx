@@ -21,6 +21,7 @@ import {
   fetchHiddenIntermediaries, 
   fetchNextActions 
 } from '../services/api';
+import MetricTooltip from '../components/MetricTooltip';
 
 export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence, onAskCopilot, onNavigateTab }) {
   const [activeTab, setActiveTab] = useState('hypothesis'); // 'hypothesis' | 'simulator' | 'gaps' | 'next_actions'
@@ -319,11 +320,19 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
             </div>
 
             {/* Simulation Metrics Dashboard */}
-            {simulationResult && (
+            {runningSimulation ? (
+              <div className="p-16 flex flex-col items-center justify-center space-y-3 rounded-2xl bg-intel-900 border border-intel-800">
+                <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                <span className="font-mono text-xs text-slate-400">Simulating network fragmentation impact...</span>
+              </div>
+            ) : simulationResult ? (
               <div className="p-6 rounded-2xl bg-intel-900 border border-intel-700 space-y-6 shadow-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
-                    <div className="text-[11px] font-mono text-slate-400 uppercase">Estimated Fragmentation</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase flex items-center">
+                      <span>Estimated Fragmentation</span>
+                      <MetricTooltip term="density" />
+                    </div>
                     <div className="text-2xl font-black text-rose-400 font-mono">
                       {simulationResult.fragmentation_percent}%
                     </div>
@@ -331,7 +340,10 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
                   </div>
 
                   <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
-                    <div className="text-[11px] font-mono text-slate-400 uppercase">Isolated Sub-Clusters</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase flex items-center">
+                      <span>Isolated Sub-Clusters</span>
+                      <MetricTooltip term="cluster" />
+                    </div>
                     <div className="text-2xl font-black text-amber-400 font-mono">
                       {simulationResult.after_components} Clusters
                     </div>
@@ -339,7 +351,10 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
                   </div>
 
                   <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
-                    <div className="text-[11px] font-mono text-slate-400 uppercase">Directly Severed Associates</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase flex items-center">
+                      <span>Directly Severed Associates</span>
+                      <MetricTooltip term="degree" />
+                    </div>
                     <div className="text-2xl font-black text-intel-accent font-mono">
                       {simulationResult.affected_direct_neighbors_count} Nodes
                     </div>
@@ -347,7 +362,10 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
                   </div>
 
                   <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-1">
-                    <div className="text-[11px] font-mono text-slate-400 uppercase">Primary Fallback Bridge</div>
+                    <div className="text-[11px] font-mono text-slate-400 uppercase flex items-center">
+                      <span>Primary Fallback Bridge</span>
+                      <MetricTooltip term="betweenness" />
+                    </div>
                     <div className="text-base font-bold text-emerald-400 truncate">
                       {simulationResult.primary_fallback_bridge}
                     </div>
@@ -368,8 +386,9 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
 
                 {/* Remaining Critical Bridges */}
                 <div className="space-y-3">
-                  <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider">
-                    New Successor Bridge Nodes (Post-Disruption Network)
+                  <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider flex items-center">
+                    <span>New Successor Bridge Nodes (Post-Disruption Network)</span>
+                    <MetricTooltip term="betweenness" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {simulationResult.remaining_bridges?.map((b, idx) => (
@@ -384,6 +403,10 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="p-12 text-center text-slate-500 text-xs rounded-2xl bg-intel-900 border border-intel-800">
+                Select a suspect node and click "SIMULATE REMOVAL" to calculate disruption fragmentation.
+              </div>
             )}
           </div>
         )}
@@ -395,32 +418,38 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
               Detected Unobserved Intermediaries & Structural Gaps ({gaps.length})
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {gaps.map((gap) => (
-                <div key={gap.id} className="p-5 rounded-2xl bg-intel-900 border border-intel-700/80 space-y-3 shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      {gap.gap_type}
-                    </span>
-                    <span className="text-xs font-mono text-slate-400">Confidence: {Math.round(gap.confidence * 100)}%</span>
-                  </div>
+            {gaps.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {gaps.map((gap) => (
+                  <div key={gap.id} className="p-5 rounded-2xl bg-intel-900 border border-intel-700/80 space-y-3 shadow-xl">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {gap.gap_type}
+                      </span>
+                      <span className="text-xs font-mono text-slate-400">Confidence: {Math.round(gap.confidence * 100)}%</span>
+                    </div>
 
-                  <div>
-                    <h4 className="text-sm font-bold text-white">
-                      {gap.cluster_a} ⟷ {gap.cluster_b}
-                    </h4>
-                    <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                      {gap.why_suspicious}
-                    </p>
-                  </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">
+                        {gap.cluster_a} ⟷ {gap.cluster_b}
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                        {gap.why_suspicious}
+                      </p>
+                    </div>
 
-                  <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 text-xs text-slate-300 space-y-1">
-                    <div className="text-[10.5px] font-mono font-bold text-intel-accent uppercase">Suggested Investigative Lead:</div>
-                    <p className="text-[11.5px]">{gap.suggested_lead}</p>
+                    <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 text-xs text-slate-300 space-y-1">
+                      <div className="text-[10.5px] font-mono font-bold text-intel-accent uppercase">Suggested Investigative Lead:</div>
+                      <p className="text-[11.5px]">{gap.suggested_lead}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-16 text-center text-slate-500 text-xs rounded-2xl bg-intel-900 border border-intel-800">
+                No unobserved network gaps detected in current graph topology.
+              </div>
+            )}
           </div>
         )}
 
@@ -431,53 +460,59 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
               AI-Ranked Next Best Investigative Actions
             </div>
 
-            <div className="space-y-3">
-              {nextActions.map((action, idx) => (
-                <div
-                  key={action.id}
-                  className="p-4 rounded-2xl bg-intel-900 border border-intel-700/80 flex items-start justify-between space-x-4 shadow-lg hover:border-intel-accent/50 transition-all"
-                >
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-400 flex items-center justify-center font-mono font-bold text-xs shrink-0 mt-0.5">
-                      #{idx + 1}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-0.2 rounded text-[10px] font-mono font-bold ${
-                          action.priority === 'HIGH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        }`}>
-                          {action.priority} PRIORITY
-                        </span>
-                        <span className="text-xs font-mono text-slate-400">
-                          Target: <strong className="text-slate-200">{action.target_entity}</strong> ({action.target_type})
-                        </span>
+            {nextActions.length > 0 ? (
+              <div className="space-y-3">
+                {nextActions.map((action, idx) => (
+                  <div
+                    key={action.id}
+                    className="p-4 rounded-2xl bg-intel-900 border border-intel-700/80 flex items-start justify-between space-x-4 shadow-lg hover:border-intel-accent/50 transition-all"
+                  >
+                    <div className="flex items-start space-x-3.5">
+                      <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-400 flex items-center justify-center font-mono font-bold text-xs shrink-0 mt-0.5">
+                        #{idx + 1}
                       </div>
 
-                      <h4 className="text-sm font-bold text-white">
-                        {action.title}
-                      </h4>
-                      <p className="text-xs text-slate-300 leading-relaxed">
-                        {action.why}
-                      </p>
-                    </div>
-                  </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-0.2 rounded text-[10px] font-mono font-bold ${
+                            action.priority === 'HIGH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          }`}>
+                            {action.priority} PRIORITY
+                          </span>
+                          <span className="text-xs font-mono text-slate-400">
+                            Target: <strong className="text-slate-200">{action.target_entity}</strong> ({action.target_type})
+                          </span>
+                        </div>
 
-                  <button
-                    onClick={() => {
-                      if (action.action_category === 'FINANCIAL_SUBPOENA' && onNavigateTab) {
-                        onNavigateTab('financial');
-                      } else if (action.supporting_doc && onOpenEvidence) {
-                        onOpenEvidence(action.supporting_doc);
-                      }
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 font-mono text-xs whitespace-nowrap shrink-0 transition-colors"
-                  >
-                    {action.action_button_label} →
-                  </button>
-                </div>
-              ))}
-            </div>
+                        <h4 className="text-sm font-bold text-white">
+                          {action.title}
+                        </h4>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          {action.why}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (action.action_category === 'FINANCIAL_SUBPOENA' && onNavigateTab) {
+                          onNavigateTab('financial');
+                        } else if (action.supporting_doc && onOpenEvidence) {
+                          onOpenEvidence(action.supporting_doc);
+                        }
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 font-mono text-xs whitespace-nowrap shrink-0 transition-colors"
+                    >
+                      {action.action_button_label} →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-16 text-center text-slate-500 text-xs rounded-2xl bg-intel-900 border border-intel-800">
+                No recommended investigative actions generated yet. Ingest documents or load the demo investigation.
+              </div>
+            )}
           </div>
         )}
       </div>

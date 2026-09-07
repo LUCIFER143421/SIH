@@ -178,6 +178,16 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'entities' && (
+            <EntitiesListView
+              onSelectEntity={(id) => {
+                setSelectedEntityId(id);
+                setActiveTab('network');
+              }}
+              onAskCopilot={handleAskCopilot}
+            />
+          )}
+
           {activeTab === 'documents' && (
             <IngestionModal
               onDocumentIngested={() => {

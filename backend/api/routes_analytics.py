@@ -113,12 +113,225 @@ def simulate_network_disruption(req: DisruptionRequest):
         )
     }
 
+def _evaluate_dynamic_hypothesis(query_text: str) -> Dict[str, Any]:
+    """
+    Dynamically extracts entities from question text and runs real graph queries
+    (shortest path, direct relationships, shared documents, cluster connectivity).
+    """
+    clean_q = str(query_text or "").strip()
+    q_lower = clean_q.lower()
+
+    all_entities = db_service.get_entities()
+    all_rels = db_service.get_relationships()
+    
+    # Sort entities by length of canonical name descending to match longer specific names first
+    sorted_entities = sorted(all_entities, key=lambda e: len(e.get("canonical_name", "")), reverse=True)
+    
+    matched_entities = []
+    seen_ids = set()
+
+    for ent in sorted_entities:
+        ent_id = ent["id"]
+        c_name = ent.get("canonical_name", "").strip()
+        aliases = ent.get("metadata", {}).get("aliases", [])
+        
+        # Check canonical name and aliases
+        candidates_to_match = [c_name] + aliases
+        name_parts = [p for p in c_name.split() if len(p) > 3]
+        
+        is_matched = False
+        for cand in candidates_to_match:
+            if cand and cand.lower() in q_lower:
+                is_matched = True
+                break
+        
+        if not is_matched and len(name_parts) >= 2:
+            if all(p.lower() in q_lower for p in name_parts):
+                is_matched = True
+
+        if is_matched and ent_id not in seen_ids:
+            matched_entities.append(ent)
+            seen_ids.add(ent_id)
+
+    # 1. Unknown entity case: No matching entities in case file
+    if not matched_entities:
+        return {
+            "title": clean_q,
+            "entity_ids": [],
+            "assessment": "UNVERIFIABLE / ENTITY NOT IN CASE FILE",
+            "confidence_percent": 10,
+            "supporting_signals": [],
+            "contradicting_signals": [
+                "No entities, suspects, phone numbers, accounts, or organizations in this question match active records in Operation ShadowNet."
+            ],
+            "supporting_documents": [],
+            "what_could_disprove": "Ingestion of external evidence (FIR, CDR, or Bank STR) referencing the queried entities or identifiers.",
+            "recommended_action": "Verify spelling of suspect names or ingest additional case documents into the intelligence store."
+        }
+
+    # 2. Multi-entity comparison case
+    if len(matched_entities) >= 2:
+        e1, e2 = matched_entities[0], matched_entities[1]
+        id1, id2 = e1["id"], e2["id"]
+        name1, name2 = e1["canonical_name"], e2["canonical_name"]
+
+        # Check graph connectivity
+        undirected_g = graph_adapter.undirected_g
+        has_connection = False
+        path = []
+        if id1 in undirected_g and id2 in undirected_g:
+            if nx.has_path(undirected_g, id1, id2):
+                has_connection = True
+                path = nx.shortest_path(undirected_g, id1, id2)
+
+        if not has_connection:
+            return {
+                "title": clean_q,
+                "entity_ids": [id1, id2],
+                "assessment": "NO SIGNIFICANT LINK DETECTED",
+                "confidence_percent": 18,
+                "supporting_signals": [],
+                "contradicting_signals": [
+                    f"No direct or indirect communication, ownership, or financial link found between {name1} and {name2} in active graph data.",
+                    "Entities belong to completely disconnected operational clusters with zero shared evidence records."
+                ],
+                "supporting_documents": [],
+                "what_could_disprove": f"Discovery of previously unlinked call records, financial transfers, or travel logs establishing contact between {name1} and {name2}.",
+                "recommended_action": f"Treat {name1} and {name2} as independent actors unless new documentary evidence is ingested."
+            }
+
+        # Entities ARE connected
+        hops = len(path) - 1
+        path_names = [
+            db_service.get_entity_by_id(nid)["canonical_name"] if db_service.get_entity_by_id(nid) else nid
+            for nid in path
+        ]
+
+        # Find direct relationships
+        direct_rels = [
+            r for r in all_rels
+            if (r["source_entity_id"] == id1 and r["target_entity_id"] == id2) or
+               (r["source_entity_id"] == id2 and r["target_entity_id"] == id1)
+        ]
+
+        # Collect evidence docs along path
+        path_doc_ids = set()
+        for i in range(len(path) - 1):
+            src_i, tgt_i = path[i], path[i+1]
+            for r in all_rels:
+                if (r["source_entity_id"] == src_i and r["target_entity_id"] == tgt_i) or \
+                   (r["source_entity_id"] == tgt_i and r["target_entity_id"] == src_i):
+                    if r.get("document_id"):
+                        path_doc_ids.add(r["document_id"])
+
+        supporting_docs = []
+        for did in list(path_doc_ids)[:4]:
+            d = db_service.get_document_by_id(did)
+            if d:
+                supporting_docs.append({"id": d["id"], "title": d["title"]})
+
+        supporting_signals = []
+        if direct_rels:
+            for r in direct_rels:
+                snippet = f": \"{r['evidence_snippet']}\"" if r.get("evidence_snippet") else ""
+                supporting_signals.append(
+                    f"Direct verified '{r['relationship_type']}' link recorded between {name1} and {name2}{snippet}."
+                )
+            confidence = int(min(95, max(80, direct_rels[0].get("confidence", 0.9) * 100)))
+            assessment = "STRONG CORROBORATED CONNECTION"
+            contradictions = [
+                "Verify physical custody and forensic attribution of communication devices before formal legal proceedings."
+            ]
+        else:
+            supporting_signals.append(
+                f"Connected via {hops}-hop intermediary chain: {' -> '.join(path_names)}."
+            )
+            supporting_signals.append(
+                f"Multi-hop routing flows through key operational bridge {path_names[1]}."
+            )
+            confidence = max(50, 85 - (hops - 1) * 15)
+            assessment = "INDIRECT MULTI-HOP CONNECTION"
+            contradictions = [
+                f"No direct 1-to-1 phone calls or financial transactions found; connection is entirely mediated through intermediaries ({', '.join(path_names[1:-1])})."
+            ]
+
+        return {
+            "title": clean_q,
+            "entity_ids": path,
+            "assessment": assessment,
+            "confidence_percent": confidence,
+            "supporting_signals": supporting_signals,
+            "contradicting_signals": contradictions,
+            "supporting_documents": supporting_docs,
+            "what_could_disprove": f"Documentary proof that intermediaries between {name1} and {name2} acted independently without coordinated criminal intent.",
+            "recommended_action": f"Subpoena communications and travel logs for intermediate node {path_names[1]} to establish direct conspiracy."
+        }
+
+    # 3. Single entity case
+    ent = matched_entities[0]
+    ent_id = ent["id"]
+    ent_name = ent["canonical_name"]
+    undirected_g = graph_adapter.undirected_g
+
+    if ent_id not in undirected_g or undirected_g.degree(ent_id) == 0:
+        return {
+            "title": clean_q,
+            "entity_ids": [ent_id],
+            "assessment": "ISOLATED / NO ACTIVE NETWORK LINKS",
+            "confidence_percent": 20,
+            "supporting_signals": [],
+            "contradicting_signals": [
+                f"Entity {ent_name} is indexed in case records but currently exhibits zero active relationships or links in the graph."
+            ],
+            "supporting_documents": [],
+            "what_could_disprove": f"Ingesting fresh CDR or surveillance logs establishing contacts for {ent_name}.",
+            "recommended_action": f"Check alias resolution table or audit secondary records for {ent_name}."
+        }
+
+    neighbors = list(undirected_g.neighbors(ent_id))
+    neighbor_names = [
+        db_service.get_entity_by_id(n)["canonical_name"] if db_service.get_entity_by_id(n) else n
+        for n in neighbors
+    ]
+    
+    ent_rels = [
+        r for r in all_rels
+        if r["source_entity_id"] == ent_id or r["target_entity_id"] == ent_id
+    ]
+    doc_ids = list({r["document_id"] for r in ent_rels if r.get("document_id")})
+    supporting_docs = []
+    for did in doc_ids[:4]:
+        d = db_service.get_document_by_id(did)
+        if d:
+            supporting_docs.append({"id": d["id"], "title": d["title"]})
+
+    return {
+        "title": clean_q,
+        "entity_ids": [ent_id] + neighbors[:3],
+        "assessment": "ACTIVE CASE ENTITY IDENTIFIED",
+        "confidence_percent": min(92, 65 + len(neighbors) * 4),
+        "supporting_signals": [
+            f"Entity {ent_name} has {len(neighbors)} direct network connections ({', '.join(neighbor_names[:4])}).",
+            f"Operational Role: {ent.get('metadata', {}).get('role', 'Active Syndicate Member')}."
+        ],
+        "contradicting_signals": [
+            "Ensure independent physical evidence corroborates device attribution."
+        ],
+        "supporting_documents": supporting_docs,
+        "what_could_disprove": "Legitimate explanation for associations with connected nodes.",
+        "recommended_action": f"Trace secondary communication links for {ent_name}."
+    }
+
 @router.post("/test-hypothesis")
 def test_investigative_hypothesis(req: HypothesisRequest):
     """
     Evaluates an investigative hypothesis against verified evidence, relationships,
     temporal bursts, and contradictory signals.
     """
+    # If a custom question / statement is provided, dynamically evaluate it using real graph queries
+    if req.custom_statement and req.custom_statement.strip():
+        return _evaluate_dynamic_hypothesis(req.custom_statement)
+
     hyp_id = req.hypothesis_id or "vikram_coordination"
 
     # Pre-evaluated explainable hypothesis models grounded in Operation ShadowNet
@@ -192,12 +405,11 @@ def test_investigative_hypothesis(req: HypothesisRequest):
         }
     }
 
-    result = hypotheses.get(hyp_id, hypotheses["vikram_coordination"])
-    if req.custom_statement:
-        result = copy.deepcopy(result)
-        result["title"] = req.custom_statement
+    if hyp_id in hypotheses:
+        return hypotheses[hyp_id]
     
-    return result
+    # If hypothesis_id is arbitrary text (e.g. question passed as id)
+    return _evaluate_dynamic_hypothesis(hyp_id)
 
 @router.get("/hidden-intermediaries")
 def get_hidden_intermediaries():

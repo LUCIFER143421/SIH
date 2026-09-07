@@ -81,8 +81,11 @@ export default function EntitiesListView({ onSelectEntity, onAskCopilot }) {
           <tbody className="divide-y divide-intel-800 text-slate-300">
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500">
-                  Retrieving entity records...
+                <td colSpan={6} className="p-12 text-center text-slate-400">
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <div className="w-5 h-5 border-2 border-intel-accent border-t-transparent rounded-full animate-spin" />
+                    <span className="font-mono text-xs">Retrieving indexed entity records from database...</span>
+                  </div>
                 </td>
               </tr>
             ) : entities.length > 0 ? (
@@ -120,8 +123,14 @@ export default function EntitiesListView({ onSelectEntity, onAskCopilot }) {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500">
-                  No entities matched query.
+                <td colSpan={6} className="p-12 text-center text-slate-400">
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <Users className="w-8 h-8 text-slate-600" />
+                    <p className="font-mono text-xs text-slate-300 font-bold">No Entities Found</p>
+                    <p className="text-[11px] text-slate-500 max-w-sm">
+                      No entities matched your search query or type filter. Try adjusting the search term or resetting the filter.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}

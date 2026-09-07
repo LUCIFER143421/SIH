@@ -3,6 +3,8 @@ import {
   ZoomIn, 
   ZoomOut, 
   Maximize2, 
+  Minimize2,
+  RotateCcw,
   RefreshCw, 
   Sparkles,
   Network,
@@ -62,6 +64,25 @@ export default function NetworkGraph({
   const [layoutMode, setLayoutMode] = useState('circular'); // 'circular' | 'layered' | 'grid'
   const [selectedEdgeData, setSelectedEdgeData] = useState(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => {
+      const next = !prev;
+      setTimeout(() => handleFit(), 80);
+      return next;
+    });
+  };
 
   const rawNodes = graphData?.nodes || [];
   const rawEdges = graphData?.edges || [];
@@ -241,7 +262,20 @@ export default function NetworkGraph({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[480px] bg-[#070a10] overflow-hidden rounded-2xl border border-intel-800 shadow-2xl flex flex-col select-none">
+    <div className={`${
+      isFullscreen 
+        ? 'fixed inset-0 z-50 w-screen h-screen bg-[#070a10] overflow-hidden flex flex-col select-none animate-fadeIn' 
+        : 'relative w-full h-full min-h-[480px] bg-[#070a10] overflow-hidden rounded-2xl border border-intel-800 shadow-2xl flex flex-col select-none'
+    }`}>
+      {/* Fullscreen Mode Top Banner */}
+      {isFullscreen && (
+        <div className="absolute top-4 left-4 z-30 flex items-center space-x-2.5 px-3.5 py-1.5 rounded-xl bg-intel-950/95 border border-intel-700 text-xs font-mono text-slate-200 backdrop-blur shadow-2xl">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-bold text-white">Full Screen Graph Mode</span>
+          <span className="text-slate-400 text-[10.5px]">| Press ESC or click minimize to exit</span>
+        </div>
+      )}
+
       {/* SVG Canvas */}
       <svg
         id="canvas-bg"
@@ -523,10 +557,21 @@ export default function NetworkGraph({
           </button>
           <button
             onClick={handleFit}
-            title="Reset View"
+            title="Center / Reset View"
             className="p-1.5 rounded-lg hover:bg-intel-800 text-slate-300 transition-colors"
           >
-            <Maximize2 className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Full Screen (Esc)" : "Expand to Full Screen"}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isFullscreen 
+                ? 'bg-intel-accent/20 text-intel-accent border border-intel-accent/40 shadow-md' 
+                : 'hover:bg-intel-800 text-slate-300'
+            }`}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
       )}
@@ -563,6 +608,31 @@ export default function NetworkGraph({
               <span className="text-slate-300">Account</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Empty State Overlay */}
+      {!hasNodes && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-3 z-10 bg-intel-950/80">
+          <div className="w-12 h-12 rounded-2xl bg-intel-900 border border-intel-800 flex items-center justify-center text-slate-500">
+            <Network className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white font-mono">No Graph Entities Available</h3>
+            <p className="text-xs text-slate-400 max-w-sm">
+              {mode === 'focus'
+                ? 'No direct or multi-hop connections found for the selected entity under current filters.'
+                : 'No entities or relationships match current visibility filters. Adjust filters or load the demo investigation.'}
+            </p>
+          </div>
+          {onStartDemo && (
+            <button
+              onClick={onStartDemo}
+              className="px-4 py-2 rounded-xl bg-intel-accent hover:bg-sky-400 text-slate-950 font-bold font-mono text-xs transition-all shadow-md shadow-intel-accent/20"
+            >
+              Load Demo Investigation
+            </button>
+          )}
         </div>
       )}
     </div>

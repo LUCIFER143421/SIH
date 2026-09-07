@@ -100,6 +100,7 @@ class Alert(BaseModel):
     evidence_document_ids: List[str]
     confidence: float
     status: str = "UNRESOLVED"
+    source: Optional[str] = "case_file"
     created_at: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 

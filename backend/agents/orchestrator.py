@@ -62,6 +62,62 @@ class InvestigationOrchestrator:
                         if target_entities:
                             break
 
+            # 2.5 Out-of-Domain Relevance Check
+            # If no entities matched and no domain/case keywords are present, return an honest out-of-domain response
+            domain_keywords = [
+                # Analytical / Graph terms
+                "centrality", "bridge", "betweenness", "pagerank", "community", "cluster", "influence",
+                "density", "graph", "network", "modularity", "anomal", "burst", "suspicious", "pattern", "alert", "risk",
+                # Case / Police / Law enforcement
+                "case", "operation", "shadownet", "fir", "cdr", "intel", "surveillance", "evidence", "document",
+                "record", "report", "lead", "suspect", "syndicate", "kingpin", "investigat", "action", "recommend",
+                "customs", "port", "haldia", "dimapur", "guwahati", "patna", "kolkata", "delhi", "contraband",
+                "smuggl", "briefcase", "arrest", "police", "officer", "inspector", "station",
+                # Financial & Hawala
+                "money", "financial", "transaction", "transfer", "hawala", "smurfing", "bank", "account",
+                "deposit", "rtgs", "lakh", "fiu", "str", "rupee", "fund", "cash", "layer", "structur",
+                # Telecom & Vehicles
+                "phone", "sim", "gateway", "call", "carrier", "tower", "vehicle", "truck", "car", "fortuner",
+                "bolero", "cargo", "hardware", "+91", "burner",
+                # Connectivity & Path
+                "connect", "path", "between", "link", "route", "relation", "associate", "meet", "seen",
+                "overview", "summary", "status", "brief", "help", "who is", "what is", "how is", "how are"
+            ]
+
+            has_domain_keyword = any(k in q_lower for k in domain_keywords)
+            
+            if not target_entities and not has_domain_keyword and not context_entity_id:
+                return {
+                    "query": clean_query,
+                    "answer": (
+                        "### ⚠️ OUT OF DOMAIN QUERY\n\n"
+                        "I don't have information relevant to that in this investigation case file.\n\n"
+                        "I am configured as an AI Investigation Copilot for **Operation ShadowNet** (SIH 2026 Problem Statement 26189). "
+                        "I can answer questions regarding suspects, phone numbers, vehicles, financial layering, and network connections.\n\n"
+                        "**Try asking:**\n"
+                        "- *'Who is Vikram Malhotra?'*\n"
+                        "- *'Show financial transactions linked to Apex Logistics'*\n"
+                        "- *'How are Rajesh Thapa and Suresh Agarwal connected?'*\n"
+                        "- *'What are the next recommended investigative actions?'*"
+                    ),
+                    "confidence": 0.0,
+                    "tool_traces": [
+                        {
+                            "tool_name": "domain_relevance_filter",
+                            "arguments": {"query": clean_query},
+                            "output_summary": "Query determined to be outside the scope of the criminal case file."
+                        }
+                    ],
+                    "highlight_node_ids": [],
+                    "highlight_edge_ids": [],
+                    "evidence_citations": [],
+                    "suggested_followups": [
+                        "Who is Vikram Malhotra?",
+                        "Show financial links",
+                        "What should I investigate next?"
+                    ]
+                }
+
             # 3. Tool Execution Logic Based on Query Intent
             tool_context_blocks = []
             intent_type = "general"

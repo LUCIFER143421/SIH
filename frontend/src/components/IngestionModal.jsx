@@ -2,6 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, Cpu, Eye, Sparkles } from 'lucide-react';
 import { ingestDocument, fetchDocuments } from '../services/api';
 
+const SAMPLE_RECORDS = [
+  {
+    title: 'FIR #304/2026 - Guwahati Narcotics Intercept',
+    sourceType: 'FIR',
+    content: 'On 05 March 2026, Guwahati Transit Yard officers intercepted driver Amit Kumar operating vehicle AS-01-XY-9821. Amit Kumar stated he received dispatch calls from Rajesh Thapa via phone +91-98111-22334. Transactions linked to Axis Bank account AXIS-SB-4455667788 held by Vikram Malhotra.'
+  },
+  {
+    title: 'FIR #412/2026 - Siliguri Highway Interception',
+    sourceType: 'FIR',
+    content: 'On 18 March 2026, Siliguri Special Task Force intercepted Mahindra Bolero WB-02-CD-5678 driven by suspect Deepak Chawla near Siliguri Junction Depot. The suspect admitted receiving direct transport instructions from Rajesh Thapa via burner phone +91-98111-22334. Field search revealed a consignment manifest referencing Apex Logistics Pvt Ltd and destination coordinator Vikram Malhotra using phone +91-98765-43210.'
+  },
+  {
+    title: 'FIR #509/2026 - Kolkata Port Hawala Intercept',
+    sourceType: 'FIR',
+    content: 'On 24 March 2026, Kolkata Police Crime Branch apprehended cash courier Tariq Ahmed near Haldia Port Terminal 4. Courier was in possession of Rs 12,00,000 unaccounted cash received from Suresh Agarwal at Park Street Plaza Office. Interrogation logs confirm funds were scheduled for deposit into HDFC account HDFC-CA-9988221100 before wire transfer to Axis Bank account AXIS-SB-4455667788 held by Vikram Malhotra. Customs Inspector S. K. Roy was observed meeting Tariq Ahmed prior to apprehension.'
+  },
+  {
+    title: 'INTEL #88/2026 - Karol Bagh Tech Arcade SIM Raid',
+    sourceType: 'INTEL',
+    content: 'Cyber Cell raid at Karol Bagh Tech Arcade in New Delhi uncovered a counterfeit SIM card racket managed by Mohit Verma through Metro Telecom Solutions. Seized hardware logs confirm shared GSM gateway line +91-98555-66778 was actively used to coordinate cash transits towards Patna Safehouse Flat 3B and Dimapur Market Warehouse with courier Tariq Ahmed and logistics head Rajesh Thapa.'
+  }
+];
+
 export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
   const [title, setTitle] = useState('');
   const [sourceType, setSourceType] = useState('FIR');
@@ -9,6 +32,7 @@ export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
   const [ingesting, setIngesting] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [docList, setDocList] = useState([]);
+  const [sampleIndex, setSampleIndex] = useState(0);
 
   useEffect(() => {
     loadDocs();
@@ -37,10 +61,12 @@ export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
     }
   };
 
-  const loadSampleFIR = () => {
-    setTitle('FIR #304/2026 - Guwahati Narcotics Intercept');
-    setSourceType('FIR');
-    setContent('On 05 March 2026, Guwahati Transit Yard officers intercepted driver Amit Kumar operating vehicle AS-01-XY-9821. Amit Kumar stated he received dispatch calls from Rajesh Thapa via phone +91-98111-22334. Transactions linked to Axis Bank account AXIS-SB-4455667788 held by Vikram Malhotra.');
+  const loadNextSample = () => {
+    const sample = SAMPLE_RECORDS[sampleIndex];
+    setTitle(sample.title);
+    setSourceType(sample.sourceType);
+    setContent(sample.content);
+    setSampleIndex((prev) => (prev + 1) % SAMPLE_RECORDS.length);
   };
 
   return (
@@ -58,11 +84,12 @@ export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
         </div>
 
         <button
-          onClick={loadSampleFIR}
-          className="px-3 py-1.5 rounded-lg bg-intel-900 border border-intel-700 hover:border-intel-accent text-xs font-mono text-intel-accent transition-colors flex items-center space-x-1.5"
+          onClick={loadNextSample}
+          className="px-3.5 py-1.5 rounded-lg bg-intel-900 border border-intel-700 hover:border-intel-accent text-xs font-mono text-intel-accent transition-colors flex items-center space-x-1.5 shadow-sm active:scale-95"
+          title="Click to cycle between 4 different pre-formatted sample FIR & Intel reports"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Insert Sample FIR</span>
+          <span>Insert Sample #{((sampleIndex) % SAMPLE_RECORDS.length) + 1} ({SAMPLE_RECORDS[sampleIndex].sourceType})</span>
         </button>
       </div>
 
