@@ -60,6 +60,8 @@ export default function NetworkGraph({
   const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [draggedNode, setDraggedNode] = useState(null);
+  const [nodeDragStart, setNodeDragStart] = useState(null);
+  const [hasDraggedNode, setHasDraggedNode] = useState(false);
   const [nodePositions, setNodePositions] = useState({});
   const [layoutMode, setLayoutMode] = useState('circular'); // 'circular' | 'layered' | 'grid'
   const [selectedEdgeData, setSelectedEdgeData] = useState(null);
@@ -239,6 +241,12 @@ export default function NetworkGraph({
         y: e.clientY - dragStart.y
       });
     } else if (draggedNode) {
+      if (nodeDragStart) {
+        const dist = Math.hypot(e.clientX - nodeDragStart.x, e.clientY - nodeDragStart.y);
+        if (dist > 4) {
+          setHasDraggedNode(true);
+        }
+      }
       const svg = e.currentTarget.getBoundingClientRect();
       const clientX = (e.clientX - svg.left - panOffset.x) / zoomLevel;
       const clientY = (e.clientY - svg.top - panOffset.y) / zoomLevel;
@@ -251,7 +259,14 @@ export default function NetworkGraph({
 
   const handleMouseUp = () => {
     setIsDraggingCanvas(false);
-    setDraggedNode(null);
+    if (draggedNode) {
+      if (!hasDraggedNode) {
+        if (onSelectNode) onSelectNode(draggedNode);
+      }
+      setDraggedNode(null);
+      setNodeDragStart(null);
+      setHasDraggedNode(false);
+    }
   };
 
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev * 1.25, 2.5));
@@ -417,15 +432,15 @@ export default function NetworkGraph({
               <g
                 key={node.id}
                 transform={`translate(${pos.x}, ${pos.y})`}
-                className="cursor-pointer"
+                className={`cursor-pointer ${draggedNode === node.id ? 'cursor-grabbing' : 'cursor-grab'}`}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setDraggedNode(node.id);
-                  if (onSelectNode) onSelectNode(node.id);
+                  setNodeDragStart({ x: e.clientX, y: e.clientY });
+                  setHasDraggedNode(false);
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onSelectNode) onSelectNode(node.id);
                 }}
               >
                 {/* Outer Glow */}

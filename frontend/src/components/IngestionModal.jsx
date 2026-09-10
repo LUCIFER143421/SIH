@@ -100,6 +100,28 @@ export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
           
           <div className="space-y-3">
             <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">UPLOAD FROM DISK (OPTIONAL)</label>
+              <input
+                type="file"
+                accept=".txt,.json,.csv,.log,.md"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (!title) {
+                      setTitle(file.name.replace(/\.[^/.]+$/, ''));
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setContent(event.target.result || '');
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+                className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-mono file:bg-intel-800 file:text-intel-accent hover:file:bg-intel-700 cursor-pointer bg-intel-950 border border-intel-700 rounded-lg p-1.5"
+              />
+            </div>
+
+            <div>
               <label className="text-[11px] font-mono text-slate-400 block mb-1">DOCUMENT TITLE</label>
               <input
                 type="text"
@@ -176,24 +198,30 @@ export default function IngestionModal({ onDocumentIngested, onOpenEvidence }) {
               Currently Ingested Case Documents ({docList.length})
             </h3>
             <div className="space-y-1.5 max-h-72 overflow-y-auto">
-              {docList.map((d) => (
-                <div
-                  key={d.id}
-                  onClick={() => onOpenEvidence && onOpenEvidence(d.id)}
-                  className="p-2.5 rounded-lg bg-intel-950 border border-intel-800 hover:border-intel-accent/50 cursor-pointer transition-colors flex items-center justify-between"
-                >
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-mono font-bold text-intel-accent">{d.id}</span>
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-intel-800 text-slate-400 font-mono">
-                        {d.source_type}
-                      </span>
+              {docList.length > 0 ? (
+                docList.map((d) => (
+                  <div
+                    key={d.id}
+                    onClick={() => onOpenEvidence && onOpenEvidence(d.id)}
+                    className="p-2.5 rounded-lg bg-intel-950 border border-intel-800 hover:border-intel-accent/50 cursor-pointer transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-mono font-bold text-intel-accent">{d.id}</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-intel-800 text-slate-400 font-mono">
+                          {d.source_type}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 font-medium text-xs mt-0.5">{d.title}</p>
                     </div>
-                    <p className="text-slate-300 font-medium text-xs mt-0.5">{d.title}</p>
+                    <Eye className="w-4 h-4 text-slate-400" />
                   </div>
-                  <Eye className="w-4 h-4 text-slate-400" />
+                ))
+              ) : (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  No documents ingested in this session. Add an FIR or Intel report above.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

@@ -87,7 +87,17 @@ export default function Sidebar({ activeTab, setActiveTab, alertCount = 0, candi
 
       {/* Bottom Responsible AI & Tutorial Link */}
       <div className="p-4 border-t border-intel-800/80 bg-intel-950/60 space-y-2 text-[11px] font-mono">
-        <div className="flex items-center justify-between text-slate-400">
+        {onOpenTutorial && (
+          <button
+            onClick={onOpenTutorial}
+            className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-xl bg-intel-900 hover:bg-intel-800 text-teal-300 hover:text-white border border-teal-500/40 font-mono text-xs transition-colors shadow-sm active:scale-95"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-teal-400" />
+            <span>Feature Guide & Tutorial</span>
+          </button>
+        )}
+
+        <div className="flex items-center justify-between text-slate-400 pt-1">
           <span className="text-[10px] text-slate-500">SIH 2026 PS 26189</span>
           <span className="text-[10px] text-emerald-400 font-bold">MHA Prototype</span>
         </div>

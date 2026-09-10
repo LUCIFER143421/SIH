@@ -84,10 +84,12 @@ class ResolutionCandidate(BaseModel):
     created_at: Optional[str] = None
 
 class MergeDecisionRequest(BaseModel):
-    candidate_id: str
-    primary_entity_id: str
-    secondary_entity_id: str
-    action: str = Field(..., description="MERGE or DISMISS")
+    candidate_id: Optional[str] = None
+    primary_entity_id: Optional[str] = None
+    secondary_entity_id: Optional[str] = None
+    canonical_id: Optional[str] = None
+    alias_id: Optional[str] = None
+    action: Optional[str] = "MERGE"
 
 # --- Suspicious Pattern / Alert Models ---
 class Alert(BaseModel):

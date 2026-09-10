@@ -22,6 +22,34 @@ class InvestigationOrchestrator:
             all_entities = db_service.get_entities()
             target_entities = []
 
+            # 0. Check if knowledge base is completely empty (e.g. after reset)
+            if not all_entities:
+                return {
+                    "query": clean_query,
+                    "answer": (
+                        "### 📁 Case Workspace Empty\n\n"
+                        "There are currently no active suspect entities, evidence records, or relationship links indexed in the system.\n\n"
+                        "To begin analysis:\n"
+                        "1. Navigate to **Evidence Records** (`/documents`) to ingest an FIR, CDR dump, or Intelligence Report.\n"
+                        "2. Or click **Reset / Demo Story** to load the default sample case (*Operation ShadowNet*)."
+                    ),
+                    "confidence": 1.0,
+                    "tool_traces": [
+                        {
+                            "tool_name": "check_workspace_status",
+                            "arguments": {},
+                            "output_summary": "Workspace contains 0 indexed entities."
+                        }
+                    ],
+                    "highlight_node_ids": [],
+                    "highlight_edge_ids": [],
+                    "evidence_citations": [],
+                    "suggested_followups": [
+                        "Load sample case (Operation ShadowNet)",
+                        "How do I ingest a new FIR document?"
+                    ]
+                }
+
             # 1. Direct Entity Identification in Query or Context
             if context_entity_id:
                 ent = db_service.get_entity_by_id(context_entity_id)
@@ -72,7 +100,7 @@ class InvestigationOrchestrator:
                 "case", "operation", "shadownet", "fir", "cdr", "intel", "surveillance", "evidence", "document",
                 "record", "report", "lead", "suspect", "syndicate", "kingpin", "investigat", "action", "recommend",
                 "customs", "port", "haldia", "dimapur", "guwahati", "patna", "kolkata", "delhi", "contraband",
-                "smuggl", "briefcase", "arrest", "police", "officer", "inspector", "station",
+                "smuggl", "briefcase", "arrest", "police", "officer", "inspector", "station", "hypothesis",
                 # Financial & Hawala
                 "money", "financial", "transaction", "transfer", "hawala", "smurfing", "bank", "account",
                 "deposit", "rtgs", "lakh", "fiu", "str", "rupee", "fund", "cash", "layer", "structur",
@@ -80,8 +108,7 @@ class InvestigationOrchestrator:
                 "phone", "sim", "gateway", "call", "carrier", "tower", "vehicle", "truck", "car", "fortuner",
                 "bolero", "cargo", "hardware", "+91", "burner",
                 # Connectivity & Path
-                "connect", "path", "between", "link", "route", "relation", "associate", "meet", "seen",
-                "overview", "summary", "status", "brief", "help", "who is", "what is", "how is", "how are"
+                "connect", "path", "between", "link", "route", "relation", "associate", "meet", "seen", "timeline"
             ]
 
             has_domain_keyword = any(k in q_lower for k in domain_keywords)
@@ -90,14 +117,13 @@ class InvestigationOrchestrator:
                 return {
                     "query": clean_query,
                     "answer": (
-                        "### ⚠️ OUT OF DOMAIN QUERY\n\n"
-                        "I don't have information relevant to that in this investigation case file.\n\n"
-                        "I am configured as an AI Investigation Copilot for **Operation ShadowNet** (SIH 2026 Problem Statement 26189). "
-                        "I can answer questions regarding suspects, phone numbers, vehicles, financial layering, and network connections.\n\n"
+                        "This question is outside the current investigation scope. "
+                        "I can help analyze the case, entities, relationships, evidence, alerts, timelines, and investigative hypotheses.\n\n"
                         "**Try asking:**\n"
                         "- *'Who is Vikram Malhotra?'*\n"
                         "- *'Show financial transactions linked to Apex Logistics'*\n"
                         "- *'How are Rajesh Thapa and Suresh Agarwal connected?'*\n"
+                        "- *'What are the active anomaly alerts?'*\n"
                         "- *'What are the next recommended investigative actions?'*"
                     ),
                     "confidence": 0.0,
@@ -394,6 +420,18 @@ class InvestigationOrchestrator:
             }
         except Exception as e:
             print(f"[CRIMENET AI] Copilot query exception handled safely: {e}")
+            all_ents = db_service.get_entities()
+            if not all_ents:
+                return {
+                    "query": str(query or ""),
+                    "answer": "Case workspace is currently empty. Please ingest FIR evidence documents to begin analysis.",
+                    "confidence": 1.0,
+                    "tool_traces": [],
+                    "highlight_node_ids": [],
+                    "highlight_edge_ids": [],
+                    "evidence_citations": [],
+                    "suggested_followups": ["Load sample case (Operation ShadowNet)"]
+                }
             return {
                 "query": str(query or ""),
                 "answer": (
@@ -610,6 +648,16 @@ On **February 10, 2026**, Field Surveillance Unit C (`DOC_SURV_003`) observed an
 
         # --- Default: General Case Overview ---
         else:
+            all_entities = db_service.get_entities()
+            is_demo = any(e.get("id") == "PER_001" for e in all_entities)
+            if not is_demo and all_entities:
+                top_names = ", ".join([e.get("canonical_name", "") for e in all_entities[:3]])
+                return f"""Here is the situation report on your active investigation case:
+
+We have indexed {len(all_entities)} entities across the investigation workspace, including persons of interest: **{top_names}**.
+
+You can ask me to evaluate connections between suspects, inspect communication and financial links, or summarize ingested FIR and intelligence records."""
+
             return """Here is the high-level situation report on **Operation ShadowNet**:
 
 We are tracking a coordinated cross-state syndicate spanning three specialized branches:

@@ -22,20 +22,22 @@ def get_centrality_ranking(top_k: int = 10):
     """Returns ranked list of influential and bridge entities."""
     return centrality_engine.get_influential_entities(top_k=top_k)
 
+from api.routes_alerts import sync_and_get_all_alerts
+
 @router.get("/stats")
 def get_network_statistics():
     """Returns top-level intelligence metrics for the dashboard."""
     entities = db_service.get_entities()
     relationships = db_service.get_relationships()
     documents = db_service.get_documents()
-    alerts = db_service.get_alerts()
+    active_alerts = sync_and_get_all_alerts(status="UNRESOLVED") if entities else []
     comm_data = community_engine.detect_communities()
 
     return {
         "total_entities": len(entities),
         "total_relationships": len(relationships),
         "total_documents": len(documents),
-        "total_alerts": len(alerts),
+        "total_alerts": len(active_alerts),
         "total_communities": comm_data.get("community_count", 1),
         "density": round(len(relationships) / max(len(entities) * (len(entities) - 1), 1), 4),
         "high_risk_entities_count": len([e for e in entities if e.get("risk_score", 0) > 0.75])
@@ -328,6 +330,22 @@ def test_investigative_hypothesis(req: HypothesisRequest):
     Evaluates an investigative hypothesis against verified evidence, relationships,
     temporal bursts, and contradictory signals.
     """
+    all_entities = db_service.get_entities()
+    if not all_entities:
+        return {
+            "title": req.custom_statement or "No Active Case Entities",
+            "entity_ids": [],
+            "assessment": "WORKSPACE EMPTY / NO ENTITIES INDEXED",
+            "confidence_percent": 0,
+            "supporting_signals": [],
+            "contradicting_signals": [
+                "No entities or evidence records currently exist in the database. Ingest FIR documents to evaluate hypotheses."
+            ],
+            "supporting_documents": [],
+            "what_could_disprove": "Ingest FIR or evidence documents into the investigation workspace.",
+            "recommended_action": "Ingest case documents from the Ingest Evidence tab."
+        }
+
     # If a custom question / statement is provided, dynamically evaluate it using real graph queries
     if req.custom_statement and req.custom_statement.strip():
         return _evaluate_dynamic_hypothesis(req.custom_statement)
@@ -405,11 +423,18 @@ def test_investigative_hypothesis(req: HypothesisRequest):
         }
     }
 
+    # If it's a known preset ID and we have entities matching it
     if hyp_id in hypotheses:
-        return hypotheses[hyp_id]
-    
-    # If hypothesis_id is arbitrary text (e.g. question passed as id)
-    return _evaluate_dynamic_hypothesis(hyp_id)
+        preset = hypotheses[hyp_id]
+        # Check if the preset entities actually exist in this dataset
+        preset_entity_ids = preset["entity_ids"]
+        db_ids = {e["id"] for e in all_entities}
+        if any(pe in db_ids for pe in preset_entity_ids):
+            return preset
+
+    # For dynamic or custom datasets, evaluate the title or first entity
+    first_ent_name = all_entities[0].get("canonical_name", "Primary Suspect")
+    return _evaluate_dynamic_hypothesis(f"Investigate role and connections of {first_ent_name}")
 
 @router.get("/hidden-intermediaries")
 def get_hidden_intermediaries():
@@ -417,6 +442,10 @@ def get_hidden_intermediaries():
     Identifies structural network gaps where two distinct clusters interact
     through indirect or unobserved intermediaries based on temporal and location co-occurrences.
     """
+    entities = db_service.get_entities()
+    if not entities:
+        return []
+
     return [
         {
             "id": "GAP_001",
@@ -448,6 +477,10 @@ def get_next_investigative_actions():
     Computes ranked Next Best Investigative Actions for law enforcement investigators
     based on high-confidence leads, evidence gaps, and critical network nodes.
     """
+    entities = db_service.get_entities()
+    if not entities:
+        return []
+
     return [
         {
             "id": "ACT_001",
@@ -539,15 +572,24 @@ def get_financial_flow_graph():
             "doc_id": r["document_id"]
         })
 
+    primary_flow = []
+    if len(edges) > 0:
+        # If demo case nodes exist
+        demo_suspects = {"PER_001", "PER_004", "ORG_001", "ACC_001", "ACC_002"}
+        if any(n["id"] in demo_suspects for n in nodes):
+            primary_flow = [
+                "Suresh Agarwal (Hawala Desk)",
+                "Apex Logistics Pvt Ltd (Front Entity)",
+                "HDFC-CA-9988221100 (Smurfing Pool)",
+                "AXIS-SB-4455667788 (Kingpin Account)",
+                "Vikram Malhotra (Syndicate Coordinator)"
+            ]
+        else:
+            primary_flow = [n["label"] for n in nodes[:5]]
+
     return {
         "nodes": nodes,
         "edges": edges,
         "total_transfers": len(edges),
-        "primary_layering_flow": [
-            "Suresh Agarwal (Hawala Desk)",
-            "Apex Logistics Pvt Ltd (Front Entity)",
-            "HDFC-CA-9988221100 (Smurfing Pool)",
-            "AXIS-SB-4455667788 (Kingpin Account)",
-            "Vikram Malhotra (Syndicate Coordinator)"
-        ]
+        "primary_layering_flow": primary_flow
     }

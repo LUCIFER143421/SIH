@@ -25,17 +25,17 @@ export default function CopilotChat({
 
 I analyze ingested FIRs, CDR communications, banking transfers, and surveillance reports through verified graph algorithms and analytics tools.
 
-**Recommended Questions to Ask:**
-- *"Why is Vikram Malhotra considered a high-importance bridge entity?"*
-- *"Show the connection between Vikram Malhotra and Apex Logistics."*
+**Recommended Queries & Tasks:**
 - *"What suspicious patterns or anomalies have been detected?"*
-- *"Who are the top 3 influential coordinators in this network?"*`,
+- *"Who are the top influential coordinators in this network?"*
+- *"Trace the multi-hop connection between suspect entities."*
+- *"Summarize recent evidence documents and call records."*`,
       toolTraces: [],
       citations: [],
       followups: [
-        "Why is Vikram Malhotra important?",
-        "Find path between Vikram and Apex Logistics",
-        "Show all detected suspicious anomalies"
+        "Show all detected suspicious anomalies",
+        "Rank top influential bridge entities",
+        "Explain recent evidence records"
       ]
     }
   ]);
@@ -110,7 +110,7 @@ I analyze ingested FIRs, CDR communications, banking transfers, and surveillance
                 Agentic Tools
               </span>
             </h2>
-            <p className="text-[11px] text-slate-400">Strictly Grounded • Zero Hallucination • Tool-Orchestrated</p>
+            <p className="text-[11px] text-slate-400">Strictly Grounded • Evidence-Grounded AI • Tool-Orchestrated</p>
           </div>
         </div>
 

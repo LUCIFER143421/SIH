@@ -14,37 +14,58 @@ import IngestionModal from './components/IngestionModal';
 import TransparencyView from './components/TransparencyView';
 import EvidenceViewer from './components/EvidenceViewer';
 import InvestigationStoryModal from './components/InvestigationStoryModal';
+import SystemTutorialModal from './components/SystemTutorialModal';
+import NewCaseModal from './components/NewCaseModal';
 import { 
   loadDemoCase, 
   resetSystem, 
   fetchAlerts, 
   fetchResolutionCandidates,
   fetchSystemInfo,
-  fetchGraphData
+  fetchGraphData,
+  ingestDocument
 } from './services/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedEntityId, setSelectedEntityId] = useState('PER_001');
+  const [selectedEntityId, setSelectedEntityId] = useState(null);
   const [activeEvidenceDocId, setActiveEvidenceDocId] = useState(null);
   const [copilotInitialQuery, setCopilotInitialQuery] = useState(null);
-  const [highlightNodes, setHighlightNodes] = useState(['PER_001', 'PER_002', 'PER_004', 'ORG_001']);
+  const [highlightNodes, setHighlightNodes] = useState([]);
   const [highlightEdges, setHighlightEdges] = useState([]);
   const [refreshKey, setRefreshKey] = useState(1);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+  const [activeCase, setActiveCase] = useState(null);
   
   const [alertCount, setAlertCount] = useState(0);
   const [candidateCount, setCandidateCount] = useState(0);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [systemInfo, setSystemInfo] = useState(null);
 
-  // Auto-check graph data on initial mount
+  // Check graph data on initial mount without auto-loading demo
   useEffect(() => {
     fetchGraphData().then(data => {
-      if (!data.nodes || data.nodes.length === 0) {
-        handleStartDemo();
-      } else {
+      if (data.nodes && data.nodes.length > 0) {
         refreshCounters();
+        if (data.nodes.some(n => n.id === 'PER_001')) {
+          setActiveCase({
+            name: 'Operation ShadowNet',
+            id: 'SIH-26189-SHADOWNET',
+            description: 'Dimapur → Kolkata Contraband Transit, Hawala Layering & Corrupt Port Clearance Network',
+            isCustom: false
+          });
+        } else {
+          setActiveCase({
+            name: 'Active Investigation',
+            id: 'CASE-001',
+            description: 'Active case file with ingested evidence.',
+            isCustom: true
+          });
+        }
+      } else {
+        setActiveCase(null);
       }
     }).catch((err) => {
       console.warn('Backend connection issue or graph data not ready:', err);
@@ -61,6 +82,12 @@ export default function App() {
     setIsDemoLoading(true);
     try {
       await loadDemoCase();
+      setActiveCase({
+        name: 'Operation ShadowNet',
+        id: 'SIH-26189-SHADOWNET',
+        description: 'Dimapur → Kolkata Contraband Transit, Hawala Layering & Corrupt Port Clearance Network',
+        isCustom: false
+      });
       refreshCounters();
       setRefreshKey((prev) => prev + 1);
       setSelectedEntityId('PER_001');
@@ -72,9 +99,40 @@ export default function App() {
     }
   };
 
+  const handleCreateCase = async (caseData) => {
+    try {
+      await resetSystem();
+      setActiveCase({
+        name: caseData.name,
+        id: caseData.id,
+        description: caseData.description,
+        isCustom: true
+      });
+      setSelectedEntityId(null);
+      setHighlightNodes([]);
+      setHighlightEdges([]);
+
+      if (caseData.initialFIR) {
+        await ingestDocument({
+          title: caseData.initialFIR.title,
+          content: caseData.initialFIR.content,
+          doc_type: 'FIR',
+          source: 'Police Station / Investigating Agency'
+        });
+      }
+
+      refreshCounters();
+      setRefreshKey((prev) => prev + 1);
+      setActiveTab('dashboard');
+    } catch (err) {
+      console.error('Error creating new case:', err);
+    }
+  };
+
   const handleReset = async () => {
     if (window.confirm('Reset knowledge graph and clear current investigation session?')) {
       await resetSystem();
+      setActiveCase(null);
       setSelectedEntityId(null);
       setHighlightNodes([]);
       setHighlightEdges([]);
@@ -103,6 +161,9 @@ export default function App() {
         isDemoLoading={isDemoLoading}
         systemInfo={systemInfo}
         onOpenStoryModal={() => setIsStoryModalOpen(true)}
+        onOpenTutorial={() => setIsTutorialModalOpen(true)}
+        activeCase={activeCase}
+        onOpenNewCase={() => setIsNewCaseModalOpen(true)}
       />
 
       {/* Main App Body */}
@@ -113,13 +174,14 @@ export default function App() {
           setActiveTab={setActiveTab}
           alertCount={alertCount}
           candidateCount={candidateCount}
-          onOpenTutorial={() => setIsStoryModalOpen(true)}
+          onOpenTutorial={() => setIsTutorialModalOpen(true)}
         />
 
         {/* Center Workspace */}
         <main className="flex-1 flex flex-col overflow-hidden bg-intel-950">
           {activeTab === 'dashboard' && (
             <DashboardView
+              key={`dashboard-${refreshKey}`}
               onNavigate={setActiveTab}
               onSelectEntity={(id) => {
                 setSelectedEntityId(id);
@@ -128,11 +190,15 @@ export default function App() {
               onStartDemo={handleStartDemo}
               isDemoLoading={isDemoLoading}
               onOpenStoryModal={() => setIsStoryModalOpen(true)}
+              onOpenTutorial={() => setIsTutorialModalOpen(true)}
+              activeCase={activeCase}
+              onOpenNewCase={() => setIsNewCaseModalOpen(true)}
             />
           )}
 
           {activeTab === 'network' && (
             <NetworkExplorerView
+              key={`network-${refreshKey}`}
               selectedEntityId={selectedEntityId}
               onSelectEntity={setSelectedEntityId}
               onOpenEvidence={setActiveEvidenceDocId}
@@ -146,6 +212,7 @@ export default function App() {
 
           {activeTab === 'timeline' && (
             <TimelineView
+              key={`timeline-${refreshKey}`}
               onSelectEntity={(id) => {
                 setSelectedEntityId(id);
                 setActiveTab('network');
@@ -157,6 +224,7 @@ export default function App() {
 
           {activeTab === 'financial' && (
             <MoneyFlowView
+              key={`financial-${refreshKey}`}
               onSelectEntity={(id) => {
                 setSelectedEntityId(id);
                 setActiveTab('network');
@@ -168,6 +236,7 @@ export default function App() {
 
           {activeTab === 'leads' && (
             <InvestigativeLeadsView
+              key={`leads-${refreshKey}`}
               onSelectEntity={(id) => {
                 setSelectedEntityId(id);
                 setActiveTab('network');
@@ -249,6 +318,20 @@ export default function App() {
         isOpen={isStoryModalOpen}
         onClose={() => setIsStoryModalOpen(false)}
         onNavigateTab={setActiveTab}
+      />
+
+      {/* Complete Interactive System & Feature Guide Tutorial */}
+      <SystemTutorialModal
+        isOpen={isTutorialModalOpen}
+        onClose={() => setIsTutorialModalOpen(false)}
+        onNavigateTab={setActiveTab}
+      />
+
+      {/* New Independent Case Modal */}
+      <NewCaseModal
+        isOpen={isNewCaseModalOpen}
+        onClose={() => setIsNewCaseModalOpen(false)}
+        onCreateCase={handleCreateCase}
       />
     </div>
   );

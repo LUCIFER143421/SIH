@@ -134,7 +134,7 @@ const STORY_STEPS = [
     badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
     headline: "From fragmented evidence to explainable investigative leads.",
     body: "Every finding, node, edge, and alert traces back to primary source documents. CRIMENET AI functions strictly as a decision-support copilot where human investigators verify every lead before legal action.",
-    callout: "Complete 360° Traceability • Zero Hallucination Guarantee • Ready for SIH 2026 Evaluation.",
+    callout: "Complete 360° Traceability • Evidence-Grounded AI Guarantee • Ready for SIH 2026 Evaluation.",
     targetTab: "dashboard",
     actionPrompt: "Return to Case Overview →"
   }

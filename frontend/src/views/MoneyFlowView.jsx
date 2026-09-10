@@ -122,121 +122,175 @@ export default function MoneyFlowView({ onSelectEntity, onOpenEvidence, onAskCop
         </button>
       </div>
 
-      {/* AML Alert Flag Summary Banner */}
-      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start space-x-3">
-        <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <div className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
-            Detected Financial Structuring (FIU STR #882 / AML Rule 4.2)
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            14 cash deposits of Rs 49,000 were structured consecutively into Apex Logistics (HDFC-CA-9988221100) specifically to avoid the mandatory Rs 50,000 CTR / PAN reporting threshold ("Smurfing"), followed by an immediate single RTGS transfer of Rs 15,00,000 to Vikram Malhotra's Axis Bank savings account.
-          </p>
-        </div>
-      </div>
-
-      {/* Flow Diagram (Horizontal Stepper on Desktop / Vertical on Mobile) */}
-      <div className="space-y-3">
-        <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider">
-          Multi-Hop Hawala Transfer Chain (A → B → C → D → E)
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          {layeringSteps.map((step, idx) => (
-            <div
-              key={step.step}
-              className="relative p-4 rounded-2xl bg-intel-900 border border-intel-700/80 hover:border-intel-accent/60 transition-all flex flex-col justify-between space-y-3 shadow-lg group"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-0.5 rounded text-[9.5px] font-mono font-bold border ${step.badgeColor}`}>
-                    {step.badge}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    Step {step.step}
-                  </span>
+      {/* Dynamic Content or Empty State */}
+      {financialData?.total_transfers > 0 && financialData?.nodes?.length > 0 ? (
+        <>
+          {/* AML Alert Flag Summary Banner */}
+          {financialData.nodes.some(n => n.id === 'PER_001') ? (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start space-x-3">
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
+                  Detected Financial Structuring (FIU STR #882 / AML Rule 4.2)
                 </div>
-
-                <div>
-                  <button
-                    onClick={() => onSelectEntity && onSelectEntity(step.entityId)}
-                    className="text-sm font-bold text-white group-hover:text-intel-accent text-left transition-colors truncate w-full"
-                  >
-                    {step.name}
-                  </button>
-                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                    {step.type}
-                  </div>
-                </div>
-
-                <p className="text-[11.5px] text-slate-300 leading-snug">
-                  {step.action}
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  14 cash deposits of Rs 49,000 were structured consecutively into Apex Logistics (HDFC-CA-9988221100) specifically to avoid the mandatory Rs 50,000 CTR / PAN reporting threshold ("Smurfing"), followed by an immediate single RTGS transfer of Rs 15,00,000 to Vikram Malhotra's Axis Bank savings account.
                 </p>
               </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-start space-x-3">
+              <CreditCard className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
+                  Active Financial Flow Network
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Tracking {financialData.total_transfers} financial transfers across {financialData.nodes.length} entities and accounts.
+                </p>
+              </div>
+            </div>
+          )}
 
-              <div className="space-y-2 pt-2 border-t border-intel-800">
-                <div className="text-[11px] font-mono font-bold text-intel-gold">
-                  {step.amount}
+          {/* Flow Diagram */}
+          <div className="space-y-3">
+            <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider">
+              {financialData.nodes.some(n => n.id === 'PER_001') ? 'Multi-Hop Hawala Transfer Chain (A → B → C → D → E)' : 'Reconstructed Financial Trail'}
+            </div>
+
+            {financialData.nodes.some(n => n.id === 'PER_001') ? (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                {layeringSteps.map((step) => (
+                  <div
+                    key={step.step}
+                    className="relative p-4 rounded-2xl bg-intel-900 border border-intel-700/80 hover:border-intel-accent/60 transition-all flex flex-col justify-between space-y-3 shadow-lg group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded text-[9.5px] font-mono font-bold border ${step.badgeColor}`}>
+                          {step.badge}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          Step {step.step}
+                        </span>
+                      </div>
+
+                      <div>
+                        <button
+                          onClick={() => onSelectEntity && onSelectEntity(step.entityId)}
+                          className="text-sm font-bold text-white group-hover:text-intel-accent text-left transition-colors truncate w-full"
+                        >
+                          {step.name}
+                        </button>
+                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          {step.type}
+                        </div>
+                      </div>
+
+                      <p className="text-[11.5px] text-slate-300 leading-snug">
+                        {step.action}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-intel-800">
+                      <div className="text-[11px] font-mono font-bold text-intel-gold">
+                        {step.amount}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={() => onOpenEvidence && onOpenEvidence(step.docId)}
+                          className="text-[10px] font-mono text-intel-accent hover:underline flex items-center space-x-1"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>{step.docId}</span>
+                        </button>
+
+                        <button
+                          onClick={() => onSelectEntity && onSelectEntity(step.entityId)}
+                          className="text-[10px] font-mono text-slate-400 hover:text-white"
+                        >
+                          Dossier →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {financialData.edges.map((tx, idx) => (
+                  <div key={tx.id || idx} className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono text-cyan-400 font-bold">
+                      <span>Transfer #{idx + 1}</span>
+                      <span className="text-slate-500">{tx.timestamp || 'Recorded'}</span>
+                    </div>
+                    <div className="text-xs text-white">
+                      <strong>{tx.source}</strong> ➔ <strong>{tx.target}</strong>
+                    </div>
+                    {tx.doc_id && (
+                      <button
+                        onClick={() => onOpenEvidence && onOpenEvidence(tx.doc_id)}
+                        className="text-[11px] font-mono text-intel-accent hover:underline flex items-center space-x-1"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>Source: {tx.doc_id}</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Structured Account Comparison & Audit Records */}
+          {financialData.nodes.some(n => n.id === 'PER_001') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Building2 className="w-4 h-4 text-intel-accent" />
+                    <span>Front Entity: Apex Logistics Pvt Ltd</span>
+                  </h3>
+                  <span className="text-[11px] font-mono text-amber-400">Risk Score: 0.90</span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => onOpenEvidence && onOpenEvidence(step.docId)}
-                    className="text-[10px] font-mono text-intel-accent hover:underline flex items-center space-x-1"
-                  >
-                    <FileText className="w-3 h-3" />
-                    <span>{step.docId}</span>
-                  </button>
+                <div className="text-xs text-slate-300 space-y-1.5 font-mono">
+                  <div>• Registered Account: HDFC-CA-9988221100</div>
+                  <div>• Authorized Signatory: Neha Sen (Director)</div>
+                  <div>• Registered Address: Park Street Plaza Office, Kolkata</div>
+                  <div>• Consignment Cargo: Escort vehicle WB-02-CD-5678 (Mahindra Bolero)</div>
+                </div>
+              </div>
 
-                  <button
-                    onClick={() => onSelectEntity && onSelectEntity(step.entityId)}
-                    className="text-[10px] font-mono text-slate-400 hover:text-white"
-                  >
-                    Dossier →
-                  </button>
+              <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
+                    <User className="w-4 h-4 text-purple-400" />
+                    <span>Kingpin Receiver: Vikram Malhotra</span>
+                  </h3>
+                  <span className="text-[11px] font-mono text-purple-400">Risk Score: 0.94</span>
+                </div>
+
+                <div className="text-xs text-slate-300 space-y-1.5 font-mono">
+                  <div>• Personal Account: AXIS-SB-4455667788</div>
+                  <div>• Primary Burner SIM: +91-98765-43210 (Airtel)</div>
+                  <div>• Escort Vehicle: NL-01-AB-1234 (Toyota Fortuner)</div>
+                  <div>• Network Centrality: 0.48 Betweenness (Top Structural Bridge)</div>
                 </div>
               </div>
             </div>
-          ))}
+          )}
+        </>
+      ) : (
+        <div className="p-16 flex flex-col items-center justify-center space-y-3 text-center rounded-2xl bg-intel-900/60 border border-intel-800">
+          <CreditCard className="w-10 h-10 text-slate-600" />
+          <h2 className="font-mono text-sm text-white font-bold">No Financial Transactions Indexed</h2>
+          <p className="text-xs text-slate-400 max-w-md">
+            No bank accounts, wire transfers, or Hawala structuring logs are currently loaded. Ingest financial records (e.g. Bank STRs) or load the demo investigation.
+          </p>
         </div>
-      </div>
-
-      {/* Structured Account Comparison & Audit Records */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
-              <Building2 className="w-4 h-4 text-intel-accent" />
-              <span>Front Entity: Apex Logistics Pvt Ltd</span>
-            </h3>
-            <span className="text-[11px] font-mono text-amber-400">Risk Score: 0.90</span>
-          </div>
-
-          <div className="text-xs text-slate-300 space-y-1.5 font-mono">
-            <div>• Registered Account: HDFC-CA-9988221100</div>
-            <div>• Authorized Signatory: Neha Sen (Director)</div>
-            <div>• Registered Address: Park Street Plaza Office, Kolkata</div>
-            <div>• Consignment Cargo: Escort vehicle WB-02-CD-5678 (Mahindra Bolero)</div>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
-              <User className="w-4 h-4 text-purple-400" />
-              <span>Kingpin Receiver: Vikram Malhotra</span>
-            </h3>
-            <span className="text-[11px] font-mono text-purple-400">Risk Score: 0.94</span>
-          </div>
-
-          <div className="text-xs text-slate-300 space-y-1.5 font-mono">
-            <div>• Personal Account: AXIS-SB-4455667788</div>
-            <div>• Primary Burner SIM: +91-98765-43210 (Airtel)</div>
-            <div>• Escort Vehicle: NL-01-AB-1234 (Toyota Fortuner)</div>
-            <div>• Network Centrality: 0.48 Betweenness (Top Structural Bridge)</div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

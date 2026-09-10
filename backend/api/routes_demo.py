@@ -31,7 +31,8 @@ def load_demo_case():
             node_id=e["id"],
             label=e["name"],
             node_type=e["type"],
-            metadata=e["metadata"]
+            metadata=e["metadata"],
+            risk_score=e["risk_score"]
         )
 
     # 4. Seed Documents

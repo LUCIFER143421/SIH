@@ -7,7 +7,10 @@ import {
   User,
   Network,
   Eye,
-  Sliders
+  Sliders,
+  X,
+  ArrowRight,
+  GitFork
 } from 'lucide-react';
 import NetworkGraph from '../components/NetworkGraph';
 import EntityDossier from '../components/EntityDossier';
@@ -26,7 +29,7 @@ export default function NetworkExplorerView({
 }) {
   const [graphData, setGraphData] = useState({ nodes: [], edges: [], total_nodes: 0, total_edges: 0 });
   const [graphMode, setGraphMode] = useState('focus'); // 'focus' | 'full'
-  const [focusPerson, setFocusPerson] = useState('PER_001');
+  const [focusPerson, setFocusPerson] = useState(selectedEntityId || '');
   const [focusDepth, setFocusDepth] = useState(1);
   const [availablePersons, setAvailablePersons] = useState([]);
   
@@ -57,6 +60,9 @@ export default function NetworkExplorerView({
     loadGraph();
     fetchEntities('PERSON').then((persons) => {
       setAvailablePersons(persons);
+      if (persons && persons.length > 0 && !focusPerson) {
+        setFocusPerson(persons[0].id);
+      }
     }).catch(console.error);
   }, [filterType, dateTo, refreshKey]);
 
@@ -81,6 +87,10 @@ export default function NetworkExplorerView({
       });
   };
 
+  const [showPathModal, setShowPathModal] = useState(false);
+  const [pathSource, setPathSource] = useState('');
+  const [pathTarget, setPathTarget] = useState('');
+
   const handleDateRangeChange = (from, to) => {
     setDateTo(to);
   };
@@ -89,8 +99,18 @@ export default function NetworkExplorerView({
     setRelFilters(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
-  const handleFindPathPrompt = () => {
-    onAskCopilot('Show the connection path between Vikram Malhotra and Apex Logistics.');
+  const handleExecutePathSearch = () => {
+    const srcNode = graphData.nodes.find(n => n.id === pathSource) || { label: pathSource };
+    const tgtNode = graphData.nodes.find(n => n.id === pathTarget) || { label: pathTarget };
+    const srcLabel = srcNode.label || srcNode.id || 'Source Entity';
+    const tgtLabel = tgtNode.label || tgtNode.id || 'Target Entity';
+    setShowPathModal(false);
+    onAskCopilot(`Trace the shortest connection path between ${srcLabel} and ${tgtLabel}.`);
+  };
+
+  const handleQuickDemoPath = (srcName, tgtName) => {
+    setShowPathModal(false);
+    onAskCopilot(`Show the connection path between ${srcName} and ${tgtName}.`);
   };
 
   return (
@@ -142,11 +162,7 @@ export default function NetworkExplorerView({
                     <option key={p.id} value={p.id}>{p.canonical_name} ({p.id})</option>
                   ))
                 ) : (
-                  <>
-                    <option value="PER_001">Vikram Malhotra (PER_001)</option>
-                    <option value="PER_002">Rajesh Thapa (PER_002)</option>
-                    <option value="PER_004">Suresh Agarwal (PER_004)</option>
-                  </>
+                  <option value="">No Persons Indexed</option>
                 )}
               </select>
 
@@ -201,13 +217,23 @@ export default function NetworkExplorerView({
 
         {/* Right Actions */}
         <div className="flex items-center space-x-2">
-          <button
-            onClick={handleFindPathPrompt}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-intel-900 hover:bg-intel-800 text-slate-200 border border-intel-700 font-mono text-xs transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-intel-gold" />
-            <span>Find Path (Vikram ↔ Apex)</span>
-          </button>
+          {graphData.nodes.length > 0 && (
+            <button
+              onClick={() => {
+                if (!pathSource && graphData.nodes.length > 0) {
+                  setPathSource(focusPerson || graphData.nodes[0].id);
+                }
+                if (!pathTarget && graphData.nodes.length > 1) {
+                  setPathTarget(graphData.nodes[1].id);
+                }
+                setShowPathModal(true);
+              }}
+              className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-intel-900 hover:bg-intel-800 text-slate-200 border border-intel-700 font-mono text-xs transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-intel-gold" />
+              <span>Find Network Path</span>
+            </button>
+          )}
 
           <button
             onClick={loadGraph}
@@ -272,6 +298,89 @@ export default function NetworkExplorerView({
 
       {/* Bottom Temporal Slider */}
       <TemporalSlider onDateRangeChange={handleDateRangeChange} />
+
+      {/* Interactive Path Search Modal */}
+      {showPathModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-lg bg-intel-950 border border-intel-700 rounded-2xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-intel-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <GitFork className="w-5 h-5 text-intel-gold" />
+                <h3 className="text-sm font-bold text-white">Find Network Connection Path</h3>
+              </div>
+              <button
+                onClick={() => setShowPathModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-intel-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Select any two entities in the criminal intelligence network to compute and explain the shortest multi-hop connection chain.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Source Entity</label>
+                <select
+                  value={pathSource}
+                  onChange={(e) => setPathSource(e.target.value)}
+                  className="w-full bg-intel-900 border border-intel-700 rounded-lg p-2 text-slate-200 font-mono text-xs focus:border-intel-accent outline-none"
+                >
+                  {graphData.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.label} ({n.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Target Entity</label>
+                <select
+                  value={pathTarget}
+                  onChange={(e) => setPathTarget(e.target.value)}
+                  className="w-full bg-intel-900 border border-intel-700 rounded-lg p-2 text-slate-200 font-mono text-xs focus:border-intel-accent outline-none"
+                >
+                  {graphData.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.label} ({n.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-intel-800/80">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoPath('Vikram Malhotra', 'Apex Logistics Pvt Ltd')}
+                className="text-[11px] font-mono text-intel-gold hover:underline flex items-center space-x-1"
+              >
+                <span>⚡ Quick Demo: Vikram → Apex Logistics</span>
+              </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPathModal(false)}
+                  className="px-3 py-1.5 rounded-lg border border-intel-800 text-xs font-mono text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecutePathSearch}
+                  className="px-4 py-1.5 rounded-lg bg-intel-accent hover:bg-sky-400 text-slate-950 font-bold text-xs font-mono transition-all"
+                >
+                  Find Path with Copilot
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

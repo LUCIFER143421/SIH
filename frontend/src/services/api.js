@@ -48,4 +48,22 @@ export const fetchDocument = async (docId) => (await apiClient.get(`/documents/$
 export const fetchSystemInfo = async () => (await apiClient.get('/system-info')).data;
 
 // Ingest API
-export const ingestDocument = async (title, sourceType, content, metadata = {}) => (await apiClient.post('/ingest/document', { title, source_type: sourceType, content, metadata })).data;
+export const ingestDocument = async (titleOrObj, sourceType = 'FIR', content = '', metadata = {}) => {
+  let payload;
+  if (typeof titleOrObj === 'object' && titleOrObj !== null) {
+    payload = {
+      title: titleOrObj.title || 'Untitled Document',
+      source_type: titleOrObj.source_type || titleOrObj.source || titleOrObj.doc_type || 'FIR',
+      content: titleOrObj.content || '',
+      metadata: titleOrObj.metadata || {}
+    };
+  } else {
+    payload = {
+      title: titleOrObj || 'Untitled Document',
+      source_type: sourceType || 'FIR',
+      content: content || '',
+      metadata: metadata || {}
+    };
+  }
+  return (await apiClient.post('/ingest/document', payload)).data;
+};

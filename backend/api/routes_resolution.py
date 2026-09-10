@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import MergeDecisionRequest
 from services.db_service import db_service
 from nlp.resolution_engine import resolution_engine
+from graph.networkx_adapter import graph_adapter
 
 router = APIRouter(prefix="/api/resolution", tags=["Entity Resolution"])
 
@@ -18,15 +19,22 @@ def get_candidates():
 @router.post("/merge")
 def merge_entities(req: MergeDecisionRequest):
     """Merges two entity IDs non-destructively, transferring relationships and logging alias."""
+    primary = req.primary_entity_id or req.canonical_id
+    secondary = req.secondary_entity_id or req.alias_id
+    if not primary or not secondary:
+        raise HTTPException(status_code=422, detail="Both primary (canonical) and secondary (alias) entity IDs are required for merge.")
+
     db_service.merge_entities(
-        primary_id=req.primary_entity_id,
-        secondary_id=req.secondary_entity_id,
+        primary_id=primary,
+        secondary_id=secondary,
         candidate_id=req.candidate_id
     )
+    # Immediately synchronize the in-memory graph
+    graph_adapter.rehydrate()
     return {
         "status": "MERGED",
-        "primary_entity_id": req.primary_entity_id,
-        "merged_secondary_id": req.secondary_entity_id
+        "primary_entity_id": primary,
+        "merged_secondary_id": secondary
     }
 
 @router.post("/dismiss")

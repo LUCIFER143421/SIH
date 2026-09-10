@@ -211,6 +211,9 @@ class DatabaseService:
                 for r in rows
             ]
 
+    def get_all_entities(self) -> List[Dict[str, Any]]:
+        return self.get_entities()
+
     def get_entity_by_id(self, entity_id: str) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -289,6 +292,9 @@ class DatabaseService:
                 }
                 for r in rows
             ]
+
+    def get_all_relationships(self) -> List[Dict[str, Any]]:
+        return self.get_relationships()
 
     def get_entity_relationships(self, entity_id: str) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:

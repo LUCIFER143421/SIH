@@ -75,7 +75,7 @@ export default function EvidenceViewer({ documentId, onClose }) {
                 <span className="text-slate-500 block">CASE RECORD:</span>
                 <span className="text-intel-emerald font-semibold flex items-center space-x-1">
                   <ShieldCheck className="w-3 h-3" />
-                  <span>AUTHENTICATED</span>
+                  <span>CASE RECORD: INDEXED</span>
                 </span>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import uuid
+import hashlib
 from typing import List, Dict, Any, Set, Tuple
 from collections import defaultdict
 from datetime import datetime
@@ -7,6 +8,11 @@ from graph.networkx_adapter import graph_adapter
 from analytics.centrality import centrality_engine
 from analytics.community import community_engine
 from services.db_service import db_service
+
+def _generate_alert_id(rule_name: str, entity_ids: List[str]) -> str:
+    key = f"{rule_name}_{'_'.join(sorted(str(e) for e in entity_ids))}"
+    h = hashlib.md5(key.encode()).hexdigest()[:8].upper()
+    return f"DYN_ALT_{rule_name[:4]}_{h}"
 
 class AnomalyDetector:
     """
@@ -33,13 +39,14 @@ class AnomalyDetector:
                     neighbor_comms = {partition.get(n) for n in neighbors if n in partition}
                     if len(neighbor_comms) >= 2:
                         node_data = graph_adapter.g.nodes.get(node_id, {})
+                        ent_ids = [node_id] + neighbors[:3]
                         anomalies.append({
-                            "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                            "id": _generate_alert_id("CROSS_COMMUNITY_BRIDGE", ent_ids),
                             "rule_name": "CROSS_COMMUNITY_BRIDGE",
                             "severity": "HIGH",
                             "title": f"Critical Cross-Community Bridge: {node_data.get('label', node_id)}",
                             "description": f"Entity holds high betweenness ({round(b_score, 3)}) directly interconnecting {len(neighbor_comms)} distinct operational clusters.",
-                            "entity_ids": [node_id] + neighbors[:3],
+                            "entity_ids": ent_ids,
                             "evidence_document_ids": ["DOC_INTEL_008", "DOC_FIR_001"],
                             "confidence": 0.94,
                             "metadata": {"betweenness": b_score, "bridged_clusters": list(neighbor_comms)}
@@ -55,13 +62,14 @@ class AnomalyDetector:
                         d.get("document_id") for u, v, d in graph_adapter.g.in_edges(node, data=True)
                         if d.get("document_id")
                     ]
+                    ent_ids = [node] + users
                     anomalies.append({
-                        "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                        "id": _generate_alert_id("SHARED_INFRASTRUCTURE", ent_ids),
                         "rule_name": "SHARED_INFRASTRUCTURE",
                         "severity": "MEDIUM",
                         "title": f"Shared Asset Detected: {data.get('label', node)}",
                         "description": f"Multiple independent entities ({', '.join(user_names)}) share the same infrastructure / burner SIM.",
-                        "entity_ids": [node] + users,
+                        "entity_ids": ent_ids,
                         "evidence_document_ids": list(set(edge_docs)) if edge_docs else ["DOC_FIR_006"],
                         "confidence": 0.91,
                         "metadata": {"shared_asset": data.get("label"), "users": user_names}
@@ -120,7 +128,7 @@ class AnomalyDetector:
             ]
 
             alerts.append({
-                "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                "id": _generate_alert_id("UNUSUAL_TRANSACTION_STRUCTURING", path),
                 "rule_name": "UNUSUAL_TRANSACTION_STRUCTURING",
                 "severity": "HIGH",
                 "title": f"Layered Fund Transfer Chain: {' -> '.join(path_names[:3])}",
@@ -162,7 +170,7 @@ class AnomalyDetector:
                         ]
                         
                         alerts.append({
-                            "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                            "id": _generate_alert_id("UNUSUAL_TRANSACTION_STRUCTURING", chain_entities),
                             "rule_name": "UNUSUAL_TRANSACTION_STRUCTURING",
                             "severity": "HIGH",
                             "title": f"Layered Hawala Account Structuring: {' -> '.join(path_names[:3])}",
@@ -183,14 +191,14 @@ class AnomalyDetector:
                 tgt_name = db_service.get_entity_by_id(tgt)["canonical_name"] if db_service.get_entity_by_id(tgt) else tgt
                 src_ids = [t["source_entity_id"] for t in in_transfers]
                 evidence_docs = [t["document_id"] for t in in_transfers if t.get("document_id")]
-                
+                ent_ids = [tgt] + src_ids
                 alerts.append({
-                    "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                    "id": _generate_alert_id("UNUSUAL_TRANSACTION_STRUCTURING", ent_ids),
                     "rule_name": "UNUSUAL_TRANSACTION_STRUCTURING",
                     "severity": "HIGH",
                     "title": f"Consolidated Inbound Structuring: {tgt_name}",
                     "description": f"Target entity {tgt_name} received {len(in_transfers)} separate inbound transfers in structured succession.",
-                    "entity_ids": [tgt] + src_ids,
+                    "entity_ids": ent_ids,
                     "evidence_document_ids": list(set(evidence_docs)) if evidence_docs else ["DOC_BANK_005"],
                     "confidence": 0.93,
                     "metadata": {"pattern": "Inbound Consolidation", "transfer_count": len(in_transfers)}
@@ -202,13 +210,14 @@ class AnomalyDetector:
             src_name = db_service.get_entity_by_id(r["source_entity_id"])["canonical_name"] if db_service.get_entity_by_id(r["source_entity_id"]) else r["source_entity_id"]
             tgt_name = db_service.get_entity_by_id(r["target_entity_id"])["canonical_name"] if db_service.get_entity_by_id(r["target_entity_id"]) else r["target_entity_id"]
             docs = [r.get("document_id")] if r.get("document_id") else ["DOC_BANK_005"]
+            ent_ids = [r["source_entity_id"], r["target_entity_id"]]
             alerts.append({
-                "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                "id": _generate_alert_id("UNUSUAL_TRANSACTION_STRUCTURING", ent_ids),
                 "rule_name": "UNUSUAL_TRANSACTION_STRUCTURING",
                 "severity": "HIGH",
                 "title": f"High-Value Financial Transfer: {src_name} -> {tgt_name}",
                 "description": f"Suspicious high-value financial routing flagged between {src_name} and {tgt_name}.",
-                "entity_ids": [r["source_entity_id"], r["target_entity_id"]],
+                "entity_ids": ent_ids,
                 "evidence_document_ids": docs,
                 "confidence": 0.90,
                 "metadata": {"pattern": "Direct Transaction"}
@@ -261,14 +270,15 @@ class AnomalyDetector:
                                 r["target_entity_id"] if r["source_entity_id"] == ent_id else r["source_entity_id"]
                                 for r in date_buckets[d2]
                             })
+                            ent_ids = [ent_id] + all_partners
 
                             alerts.append({
-                                "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                                "id": _generate_alert_id("COMMUNICATION_BURST", ent_ids),
                                 "rule_name": "COMMUNICATION_BURST",
                                 "severity": "HIGH",
                                 "title": f"Communication Burst Surge (+{int(spike_pct)}%): {ent_name}",
                                 "description": f"Call activity involving {ent_name} surged from {count1} calls on {d1} to {count2} calls on {d2} (+{int(spike_pct)}% increase).",
-                                "entity_ids": [ent_id] + all_partners,
+                                "entity_ids": ent_ids,
                                 "evidence_document_ids": list(set(docs)) if docs else ["DOC_CDR_004"],
                                 "confidence": 0.92,
                                 "metadata": {
@@ -284,13 +294,14 @@ class AnomalyDetector:
             primary_src = call_rels[0]["source_entity_id"]
             ent_name = db_service.get_entity_by_id(primary_src)["canonical_name"] if db_service.get_entity_by_id(primary_src) else primary_src
             docs = [r.get("document_id") for r in call_rels if r.get("document_id")]
+            ent_ids = list({r["source_entity_id"] for r in call_rels} | {r["target_entity_id"] for r in call_rels})
             alerts.append({
-                "id": f"DYN_ALT_{uuid.uuid4().hex[:6]}",
+                "id": _generate_alert_id("COMMUNICATION_BURST", ent_ids),
                 "rule_name": "COMMUNICATION_BURST",
                 "severity": "HIGH",
                 "title": f"Concentrated Communication Frequency: {ent_name}",
                 "description": f"High-frequency call cluster with {len(call_rels)} intercepted communication logs across multiple syndicate nodes.",
-                "entity_ids": list({r["source_entity_id"] for r in call_rels} | {r["target_entity_id"] for r in call_rels}),
+                "entity_ids": ent_ids,
                 "evidence_document_ids": list(set(docs)) if docs else ["DOC_CDR_004"],
                 "confidence": 0.90,
                 "metadata": {"total_calls": len(call_rels)}

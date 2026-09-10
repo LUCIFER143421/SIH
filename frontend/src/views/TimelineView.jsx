@@ -54,9 +54,9 @@ const TIMELINE_MILESTONES = [
     label: "April - June 2026",
     headline: "Centralized Multi-Cluster Syndicate Consolidation",
     summary: "Intelligence assessment confirms Vikram Malhotra operates as the central bridge interconnecting North-East Logistics, Kolkata Hawala, Haldia Port, and Delhi Tech cells.",
-    surgeNote: "Full syndicate graph active with 38 entities and 37 relationships.",
-    activeEntitiesCount: 38,
-    activeRelationsCount: 37,
+    surgeNote: "Full reconstructed multi-modal syndicate graph active across all jurisdictions.",
+    activeEntitiesCount: 40,
+    activeRelationsCount: 38,
     supportingDoc: "DOC_INTEL_008"
   }
 ];
@@ -85,7 +85,7 @@ export default function TimelineView({ onSelectEntity, onOpenEvidence, onAskCopi
             return prev;
           }
         });
-      }, 3500);
+      }, 1600);
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -160,139 +160,153 @@ export default function TimelineView({ onSelectEntity, onOpenEvidence, onAskCopi
       </div>
 
       {/* Main Workspace (Graph on Left + Temporal Insights Card on Right) */}
-      <div className="flex-1 flex overflow-hidden min-h-0 min-w-0 p-4 gap-4">
-        {/* Left: Interactive Canvas */}
-        <div className="flex-1 h-full relative rounded-2xl border border-intel-800 overflow-hidden bg-[#070a10] shadow-2xl">
-          <NetworkGraph
-            graphData={graphData}
-            onSelectNode={(id) => onSelectEntity && onSelectEntity(id)}
-            onOpenEvidence={onOpenEvidence}
-          />
-        </div>
-
-        {/* Right: Chronological Milestone Narrative Card */}
-        <div className="w-96 flex flex-col space-y-4 shrink-0 overflow-y-auto pr-1">
-          {/* Active Period Card */}
-          <div className="p-5 rounded-2xl bg-intel-900 border border-intel-700 shadow-xl space-y-3.5">
-            <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-intel-accent/20 text-intel-accent border border-intel-accent/40">
-                {activeMilestone.label}
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                Stage {currentStep + 1} of {TIMELINE_MILESTONES.length}
-              </span>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-bold text-white leading-tight">
-                {activeMilestone.headline}
-              </h3>
-              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                {activeMilestone.summary}
-              </p>
-            </div>
-
-            {/* AI Contextual Insight Callout */}
-            <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 text-xs space-y-1">
-              <div className="flex items-center space-x-1.5 text-intel-gold font-mono font-bold text-[11px]">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>AI TEMPORAL INTERPRETATION</span>
-              </div>
-              <p className="text-[11.5px] text-slate-300">
-                {activeMilestone.surgeNote}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-1 flex items-center justify-between">
-              {activeMilestone.supportingDoc && (
-                <button
-                  onClick={() => onOpenEvidence && onOpenEvidence(activeMilestone.supportingDoc)}
-                  className="flex items-center space-x-1 text-xs font-mono text-intel-accent hover:underline"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>View {activeMilestone.supportingDoc}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => onAskCopilot && onAskCopilot(`What happened during ${activeMilestone.label} in Operation ShadowNet?`)}
-                className="px-3 py-1 rounded-lg bg-intel-800 hover:bg-intel-700 text-slate-200 border border-intel-700 font-mono text-[11px] transition-colors"
-              >
-                Ask AI Investigator →
-              </button>
-            </div>
+      {graphData.nodes?.length > 0 ? (
+        <div className="flex-1 flex overflow-hidden min-h-0 min-w-0 p-4 gap-4">
+          {/* Left: Interactive Canvas */}
+          <div className="flex-1 h-full relative rounded-2xl border border-intel-800 overflow-hidden bg-[#070a10] shadow-2xl">
+            <NetworkGraph
+              graphData={graphData}
+              onSelectNode={(id) => onSelectEntity && onSelectEntity(id)}
+              onOpenEvidence={onOpenEvidence}
+            />
           </div>
 
-          {/* Chronological Steps Selector */}
-          <div className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-2.5">
-            <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-              Investigation Stages
+          {/* Right: Chronological Milestone Narrative Card */}
+          <div className="w-96 flex flex-col space-y-4 shrink-0 overflow-y-auto pr-1">
+            {/* Active Period Card */}
+            <div className="p-5 rounded-2xl bg-intel-900 border border-intel-700 shadow-xl space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-intel-accent/20 text-intel-accent border border-intel-accent/40">
+                  {activeMilestone.label}
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  Stage {currentStep + 1} of {TIMELINE_MILESTONES.length}
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-white leading-tight">
+                  {activeMilestone.headline}
+                </h3>
+                <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                  {activeMilestone.summary}
+                </p>
+              </div>
+
+              {/* AI Contextual Insight Callout */}
+              <div className="p-3 rounded-xl bg-intel-950 border border-intel-800 text-xs space-y-1">
+                <div className="flex items-center space-x-1.5 text-intel-gold font-mono font-bold text-[11px]">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>AI TEMPORAL INTERPRETATION</span>
+                </div>
+                <p className="text-[11.5px] text-slate-300">
+                  {activeMilestone.surgeNote}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-1 flex items-center justify-between">
+                {activeMilestone.supportingDoc && (
+                  <button
+                    onClick={() => onOpenEvidence && onOpenEvidence(activeMilestone.supportingDoc)}
+                    className="flex items-center space-x-1 text-xs font-mono text-intel-accent hover:underline"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>View {activeMilestone.supportingDoc}</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onAskCopilot && onAskCopilot(`What happened during ${activeMilestone.label}? Summarize evidence and implicated suspects.`)}
+                  className="px-3 py-1 rounded-lg bg-intel-800 hover:bg-intel-700 text-slate-200 border border-intel-700 font-mono text-[11px] transition-colors"
+                >
+                  Ask AI Investigator →
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Chronological Steps Selector */}
+            <div className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-2.5">
+              <div className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider">
+                Investigation Stages
+              </div>
+
+              <div className="space-y-2">
+                {TIMELINE_MILESTONES.map((m, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setIsPlaying(false);
+                      setCurrentStep(idx);
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
+                      idx === currentStep
+                        ? 'bg-intel-accent/15 border-intel-accent/50 text-white shadow-md'
+                        : 'bg-intel-950/60 border-intel-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold font-mono">
+                        {m.label}
+                      </div>
+                      <div className="text-[11px] truncate max-w-[220px]">
+                        {m.headline}
+                      </div>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${idx === currentStep ? 'bg-intel-accent animate-ping' : 'bg-slate-700'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="p-12 max-w-lg rounded-3xl bg-intel-900/60 border border-intel-800 text-center space-y-4">
+            <Clock className="w-10 h-10 text-slate-600 mx-auto" />
+            <h3 className="font-mono text-sm text-white font-bold">No Temporal Evolution Data</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              No time-stamped evidence or call logs are available in this session. Ingest FIRs or load the demo investigation to trace syndicate timeline milestones.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Timeline Step Slider */}
+      {graphData.nodes?.length > 0 && (
+        <div className="h-16 border-t border-intel-800 bg-intel-950/90 px-8 flex items-center justify-between z-10 shrink-0">
+          <div className="w-full flex items-center space-x-6">
+            <span className="text-xs font-mono text-slate-400 whitespace-nowrap">
+              Timeline Scrubber:
+            </span>
+            <div className="flex-1 flex items-center space-x-3">
               {TIMELINE_MILESTONES.map((m, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setIsPlaying(false);
-                    setCurrentStep(idx);
-                  }}
-                  className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
-                    idx === currentStep
-                      ? 'bg-intel-accent/15 border-intel-accent/50 text-white shadow-md'
-                      : 'bg-intel-950/60 border-intel-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                  }`}
-                >
-                  <div className="space-y-0.5">
-                    <div className="text-xs font-bold font-mono">
-                      {m.label}
-                    </div>
-                    <div className="text-[11px] truncate max-w-[220px]">
-                      {m.headline}
-                    </div>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${idx === currentStep ? 'bg-intel-accent animate-ping' : 'bg-slate-700'}`} />
-                </button>
+                <React.Fragment key={idx}>
+                  <button
+                    onClick={() => {
+                      setIsPlaying(false);
+                      setCurrentStep(idx);
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-xl border font-mono text-xs transition-all text-center flex flex-col items-center ${
+                      idx === currentStep
+                        ? 'bg-intel-accent text-slate-950 font-bold border-intel-accent shadow-lg shadow-intel-accent/20'
+                        : idx < currentStep
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-intel-900 text-slate-400 border-intel-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold">{m.label}</span>
+                    <span className="text-[9px] opacity-80">{m.activeEntitiesCount} Nodes Active</span>
+                  </button>
+                  {idx < TIMELINE_MILESTONES.length - 1 && (
+                    <ArrowRight className="w-4 h-4 text-slate-600 shrink-0" />
+                  )}
+                </React.Fragment>
               ))}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Timeline Step Slider */}
-      <div className="h-16 border-t border-intel-800 bg-intel-950/90 px-8 flex items-center justify-between z-10 shrink-0">
-        <div className="w-full flex items-center space-x-6">
-          <span className="text-xs font-mono text-slate-400 whitespace-nowrap">
-            Timeline Scrubber:
-          </span>
-          <div className="flex-1 flex items-center space-x-3">
-            {TIMELINE_MILESTONES.map((m, idx) => (
-              <React.Fragment key={idx}>
-                <button
-                  onClick={() => {
-                    setIsPlaying(false);
-                    setCurrentStep(idx);
-                  }}
-                  className={`flex-1 py-2 px-3 rounded-xl border font-mono text-xs transition-all text-center flex flex-col items-center ${
-                    idx === currentStep
-                      ? 'bg-intel-accent text-slate-950 font-bold border-intel-accent shadow-lg shadow-intel-accent/20'
-                      : idx < currentStep
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-intel-900 text-slate-400 border-intel-800 hover:border-slate-700'
-                  }`}
-                >
-                  <span className="text-[11px] font-bold">{m.label}</span>
-                  <span className="text-[9px] opacity-80">{m.activeEntitiesCount} Nodes Active</span>
-                </button>
-                {idx < TIMELINE_MILESTONES.length - 1 && (
-                  <ArrowRight className="w-4 h-4 text-slate-600 shrink-0" />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -19,13 +19,17 @@ import {
   testHypothesis, 
   fetchDisruptionSimulation, 
   fetchHiddenIntermediaries, 
-  fetchNextActions 
+  fetchNextActions,
+  fetchEntities
 } from '../services/api';
 import MetricTooltip from '../components/MetricTooltip';
 
 export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence, onAskCopilot, onNavigateTab }) {
   const [activeTab, setActiveTab] = useState('hypothesis'); // 'hypothesis' | 'simulator' | 'gaps' | 'next_actions'
   
+  // Available Entities
+  const [availablePersons, setAvailablePersons] = useState([]);
+
   // Hypothesis State
   const [selectedHypothesisId, setSelectedHypothesisId] = useState('vikram_coordination');
   const [hypothesisResult, setHypothesisResult] = useState(null);
@@ -41,8 +45,18 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
   const [nextActions, setNextActions] = useState([]);
 
   useEffect(() => {
-    runHypothesisTest(selectedHypothesisId);
-    runSimulation(simTargetNode);
+    fetchEntities('PERSON').then((persons) => {
+      setAvailablePersons(persons);
+      if (persons && persons.length > 0) {
+        setSimTargetNode(persons[0].id);
+        runSimulation(persons[0].id);
+        runHypothesisTest(selectedHypothesisId);
+      } else {
+        setSimulationResult(null);
+        setHypothesisResult(null);
+      }
+    }).catch(console.error);
+
     fetchHiddenIntermediaries().then(setGaps).catch(console.error);
     fetchNextActions().then(setNextActions).catch(console.error);
   }, []);
@@ -146,135 +160,169 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* --- TAB 1: HYPOTHESIS TESTING --- */}
         {activeTab === 'hypothesis' && (
-          <div className="space-y-6">
-            {/* Hypothesis Selector Bar */}
-            <div className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
-              <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider">
-                Select Investigative Hypothesis to Test
+          availablePersons.length > 0 ? (
+            <div className="space-y-6">
+              {/* Hypothesis Selector Bar */}
+              <div className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-mono text-slate-400 uppercase font-bold tracking-wider">
+                    Select Investigative Hypothesis to Test
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    {availablePersons.some(p => p.id === 'PER_001') ? 'Preset Scenario Theories' : 'Live Graph Inferences'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {availablePersons.some(p => p.id === 'PER_001') ? (
+                    [
+                      { id: 'vikram_coordination', label: '1. Vikram Malhotra Coordinates Logistics & Hawala' },
+                      { id: 'port_customs_collusion', label: '2. Customs Inspector S. K. Roy Facilitates Port Clearance' },
+                      { id: 'shell_company_laundering', label: '3. Apex Logistics & Horizon Gold Are Layering Shells' }
+                    ].map((hyp) => (
+                      <button
+                        key={hyp.id}
+                        onClick={() => {
+                          setSelectedHypothesisId(hyp.id);
+                          runHypothesisTest(hyp.id);
+                        }}
+                        className={`p-3 rounded-xl border text-left font-mono text-xs transition-all ${
+                          selectedHypothesisId === hyp.id
+                            ? 'bg-indigo-500/20 border-indigo-500/60 text-white font-bold shadow-md'
+                            : 'bg-intel-950 border-intel-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {hyp.label}
+                      </button>
+                    ))
+                  ) : (
+                    availablePersons.slice(0, 3).map((p, idx) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setSelectedHypothesisId(p.id);
+                          runHypothesisTest(p.id);
+                        }}
+                        className={`p-3 rounded-xl border text-left font-mono text-xs transition-all ${
+                          selectedHypothesisId === p.id
+                            ? 'bg-indigo-500/20 border-indigo-500/60 text-white font-bold shadow-md'
+                            : 'bg-intel-950 border-intel-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {idx + 1}. Role & Connections of {p.canonical_name}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { id: 'vikram_coordination', label: '1. Vikram Malhotra Coordinates Logistics & Hawala' },
-                  { id: 'port_customs_collusion', label: '2. Customs Inspector S. K. Roy Facilitates Port Clearance' },
-                  { id: 'shell_company_laundering', label: '3. Apex Logistics & Horizon Gold Are Layering Shells' }
-                ].map((hyp) => (
-                  <button
-                    key={hyp.id}
-                    onClick={() => {
-                      setSelectedHypothesisId(hyp.id);
-                      runHypothesisTest(hyp.id);
-                    }}
-                    className={`p-3 rounded-xl border text-left font-mono text-xs transition-all ${
-                      selectedHypothesisId === hyp.id
-                        ? 'bg-indigo-500/20 border-indigo-500/60 text-white font-bold shadow-md'
-                        : 'bg-intel-950 border-intel-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {hyp.label}
-                  </button>
-                ))}
-              </div>
+              {/* Evaluation Result */}
+              {hypothesisResult && (
+                <div className="p-6 rounded-2xl bg-intel-900 border border-intel-700 space-y-5 shadow-2xl">
+                  {/* Result Header */}
+                  <div className="flex items-start justify-between border-b border-intel-800 pb-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          {hypothesisResult.assessment}
+                        </span>
+                        <span className="text-xs font-mono text-slate-400">
+                          Confidence: <strong className="text-white">{hypothesisResult.confidence_percent}%</strong> (Based on Multi-Modal Correlation)
+                        </span>
+                      </div>
+                      <h3 className="text-base font-extrabold text-white mt-1">
+                        {hypothesisResult.title}
+                      </h3>
+                    </div>
+
+                    <button
+                      onClick={() => onAskCopilot && onAskCopilot(`Explain the evidence behind the hypothesis: "${hypothesisResult.title}"`)}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 font-mono text-xs transition-colors"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Ask AI Investigator →</span>
+                    </button>
+                  </div>
+
+                  {/* Supporting vs Contradictory Evidence Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Supporting Signals */}
+                    <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-3">
+                      <div className="flex items-center space-x-2 text-emerald-400 font-mono text-xs font-bold uppercase tracking-wider">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Supporting Evidence Signals ({hypothesisResult.supporting_signals?.length})</span>
+                      </div>
+                      <ul className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                        {hypothesisResult.supporting_signals?.map((sig, idx) => (
+                          <li key={idx} className="flex items-start space-x-2">
+                            <span className="text-emerald-400 font-bold">•</span>
+                            <span>{sig}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Contradictory / Unverified Signals */}
+                    <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-3">
+                      <div className="flex items-center space-x-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Uncertainties & Contradictions</span>
+                      </div>
+                      <ul className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                        {hypothesisResult.contradicting_signals?.map((sig, idx) => (
+                          <li key={idx} className="flex items-start space-x-2">
+                            <span className="text-amber-400 font-bold">•</span>
+                            <span>{sig}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* What could disprove this */}
+                  <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 space-y-1.5 text-xs text-slate-300">
+                    <div className="text-[11px] font-mono font-bold text-indigo-300 uppercase tracking-wider">
+                      Falsification Criteria (What Could Disprove This Hypothesis?)
+                    </div>
+                    <p className="leading-relaxed">
+                      {hypothesisResult.what_could_disprove}
+                    </p>
+                  </div>
+
+                  {/* Supporting Documents */}
+                  <div className="flex items-center justify-between pt-2 border-t border-intel-800 text-xs font-mono">
+                    <div className="flex items-center space-x-3 text-slate-400">
+                      <span>Cited Evidence Sources:</span>
+                      <div className="flex items-center space-x-2">
+                        {hypothesisResult.supporting_documents?.map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => onOpenEvidence && onOpenEvidence(doc.id)}
+                            className="px-2 py-0.5 rounded bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 flex items-center space-x-1"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{doc.id}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="text-slate-400">
+                      Recommended Next Step: <strong className="text-intel-accent">{hypothesisResult.recommended_action}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Evaluation Result */}
-            {hypothesisResult && (
-              <div className="p-6 rounded-2xl bg-intel-900 border border-intel-700 space-y-5 shadow-2xl">
-                {/* Result Header */}
-                <div className="flex items-start justify-between border-b border-intel-800 pb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        {hypothesisResult.assessment}
-                      </span>
-                      <span className="text-xs font-mono text-slate-400">
-                        Confidence: <strong className="text-white">{hypothesisResult.confidence_percent}%</strong> (Based on Multi-Modal Correlation)
-                      </span>
-                    </div>
-                    <h3 className="text-base font-extrabold text-white mt-1">
-                      {hypothesisResult.title}
-                    </h3>
-                  </div>
-
-                  <button
-                    onClick={() => onAskCopilot && onAskCopilot(`Explain the evidence behind the hypothesis: "${hypothesisResult.title}"`)}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 font-mono text-xs transition-colors"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Ask AI Investigator →</span>
-                  </button>
-                </div>
-
-                {/* Supporting vs Contradictory Evidence Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Supporting Signals */}
-                  <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-3">
-                    <div className="flex items-center space-x-2 text-emerald-400 font-mono text-xs font-bold uppercase tracking-wider">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Supporting Evidence Signals ({hypothesisResult.supporting_signals?.length})</span>
-                    </div>
-                    <ul className="space-y-2 text-xs text-slate-300 leading-relaxed">
-                      {hypothesisResult.supporting_signals?.map((sig, idx) => (
-                        <li key={idx} className="flex items-start space-x-2">
-                          <span className="text-emerald-400 font-bold">•</span>
-                          <span>{sig}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Contradictory / Unverified Signals */}
-                  <div className="p-4 rounded-xl bg-intel-950 border border-intel-800 space-y-3">
-                    <div className="flex items-center space-x-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Uncertainties & Contradictions</span>
-                    </div>
-                    <ul className="space-y-2 text-xs text-slate-300 leading-relaxed">
-                      {hypothesisResult.contradicting_signals?.map((sig, idx) => (
-                        <li key={idx} className="flex items-start space-x-2">
-                          <span className="text-amber-400 font-bold">•</span>
-                          <span>{sig}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* What could disprove this */}
-                <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/25 space-y-1.5 text-xs text-slate-300">
-                  <div className="text-[11px] font-mono font-bold text-indigo-300 uppercase tracking-wider">
-                    Falsification Criteria (What Could Disprove This Hypothesis?)
-                  </div>
-                  <p className="leading-relaxed">
-                    {hypothesisResult.what_could_disprove}
-                  </p>
-                </div>
-
-                {/* Supporting Documents */}
-                <div className="flex items-center justify-between pt-2 border-t border-intel-800 text-xs font-mono">
-                  <div className="flex items-center space-x-3 text-slate-400">
-                    <span>Cited Evidence Sources:</span>
-                    <div className="flex items-center space-x-2">
-                      {hypothesisResult.supporting_documents?.map((doc) => (
-                        <button
-                          key={doc.id}
-                          onClick={() => onOpenEvidence && onOpenEvidence(doc.id)}
-                          className="px-2 py-0.5 rounded bg-intel-800 hover:bg-intel-700 text-intel-accent border border-intel-700 flex items-center space-x-1"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>{doc.id}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="text-slate-400">
-                    Recommended Next Step: <strong className="text-intel-accent">{hypothesisResult.recommended_action}</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="p-16 flex flex-col items-center justify-center space-y-3 text-center rounded-2xl bg-intel-900 border border-intel-800">
+              <Target className="w-10 h-10 text-slate-600" />
+              <h3 className="font-mono text-sm text-white font-bold">No Investigative Hypotheses Active</h3>
+              <p className="text-xs text-slate-400 max-w-md">
+                No entities or evidence have been indexed for hypothesis testing in this session. Ingest FIR documents or load the sample scenario.
+              </p>
+            </div>
+          )
         )}
 
         {/* --- TAB 2: NETWORK DISRUPTION SIMULATOR --- */}
@@ -296,22 +344,22 @@ export default function InvestigativeLeadsView({ onSelectEntity, onOpenEvidence,
                   <span className="text-xs font-mono text-slate-400">Target Node:</span>
                   <select
                     value={simTargetNode}
-                    onChange={(e) => {
-                      setSimTargetNode(e.target.value);
-                      runSimulation(e.target.value);
-                    }}
+                    onChange={(e) => setSimTargetNode(e.target.value)}
                     className="bg-intel-950 border border-intel-700 rounded-lg px-3 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-rose-500"
                   >
-                    <option value="PER_001">Vikram Malhotra (Kingpin / Bridge)</option>
-                    <option value="PER_002">Rajesh Thapa (Logistics Head)</option>
-                    <option value="PER_004">Suresh Agarwal (Hawala Operator)</option>
-                    <option value="PER_006">Mohit Verma (Burner SIM Vendor)</option>
-                    <option value="PER_007">Tariq Ahmed (Cash & Port Courier)</option>
+                    {availablePersons.length > 0 ? (
+                      availablePersons.map((p) => (
+                        <option key={p.id} value={p.id}>{p.canonical_name} ({p.metadata?.role || p.id})</option>
+                      ))
+                    ) : (
+                      <option value="">No Entities Indexed</option>
+                    )}
                   </select>
 
                   <button
                     onClick={() => runSimulation(simTargetNode)}
-                    className="px-4 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold font-mono text-xs transition-all shadow-lg shadow-rose-500/20"
+                    disabled={!simTargetNode || availablePersons.length === 0}
+                    className="px-4 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold font-mono text-xs transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50"
                   >
                     SIMULATE REMOVAL
                   </button>

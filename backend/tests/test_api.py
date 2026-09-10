@@ -219,3 +219,49 @@ def test_system_info_endpoint():
     data = response.json()
     assert data["system_name"] == "CRIMENET AI"
     assert "disclaimer" in data
+
+def test_alerts_verification_status_persistence():
+    # 1. Fetch current alerts
+    res = client.get("/api/alerts")
+    assert res.status_code == 200
+    alerts = res.json()
+    assert len(alerts) >= 1
+    target_alert_id = alerts[0]["id"]
+
+    # 2. Update status to VERIFIED
+    verify_res = client.patch(f"/api/alerts/{target_alert_id}/status?status=VERIFIED")
+    assert verify_res.status_code == 200
+    assert verify_res.json()["status"] == "VERIFIED"
+
+    # 3. Verify that fetching alerts reflects VERIFIED
+    res_after = client.get("/api/alerts")
+    updated_alert = next((a for a in res_after.json() if a["id"] == target_alert_id), None)
+    assert updated_alert is not None
+    assert updated_alert["status"] == "VERIFIED"
+
+    # 4. Update status to DISMISSED
+    dismiss_res = client.patch(f"/api/alerts/{target_alert_id}/status?status=DISMISSED")
+    assert dismiss_res.status_code == 200
+    assert dismiss_res.json()["status"] == "DISMISSED"
+
+    res_after_dismiss = client.get("/api/alerts")
+    dismissed_alert = next((a for a in res_after_dismiss.json() if a["id"] == target_alert_id), None)
+    assert dismissed_alert is not None
+    assert dismissed_alert["status"] == "DISMISSED"
+
+def test_entity_resolution_merge_api():
+    # Ingest two similar records or use existing candidates
+    res = client.get("/api/resolution/candidates")
+    assert res.status_code == 200
+    candidates = res.json()
+    if candidates:
+        first_pair = candidates[0]
+        merge_payload = {
+            "canonical_id": first_pair.get("source_entity_id") or first_pair.get("entity_a_id") or first_pair.get("primary_entity_id"),
+            "alias_id": first_pair.get("target_entity_id") or first_pair.get("entity_b_id") or first_pair.get("secondary_entity_id"),
+            "candidate_id": first_pair.get("id")
+        }
+        merge_res = client.post("/api/resolution/merge", json=merge_payload)
+        assert merge_res.status_code == 200
+        assert merge_res.json()["status"] == "MERGED"
+

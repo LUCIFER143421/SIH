@@ -151,7 +151,7 @@ export default function TransparencyView() {
             <Network className="w-4 h-4 text-purple-400" />
             <span>In-Memory NetworkX MultiGraph</span>
           </p>
-          <span className="text-[11px] font-mono text-slate-300">Neo4j Bolt-Ready Adapter</span>
+          <span className="text-[11px] font-mono text-slate-300">Pluggable Graph Store Interface (Current: NetworkX)</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-intel-900 border border-intel-800 space-y-1">

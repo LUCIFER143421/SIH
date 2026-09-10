@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Calendar, Play, Pause, RotateCcw } from 'lucide-react';
 
 const TIMELINE_STOPS = [
-  { date: '2026-01-10', label: 'Jan 10 (Initial Intercepts)' },
-  { date: '2026-01-28', label: 'Jan 28 (Hawala Setup)' },
-  { date: '2026-02-14', label: 'Feb 14 (Comms Burst Surge)' },
-  { date: '2026-02-22', label: 'Feb 22 (Layered Hawala Transfer)' },
-  { date: '2026-03-02', label: 'Mar 02 (Shared Burner SIM Racket)' },
-  { date: '2026-03-12', label: 'Mar 12 (Full Syndicate Active)' }
+  { date: '2026-01-15', label: 'Jan 15 (Initial Dimapur Intercepts)' },
+  { date: '2026-01-31', label: 'Jan 31 (Logistics & Hawala Setup)' },
+  { date: '2026-02-16', label: 'Feb 16 (Comms Surge & Port Infiltration)' },
+  { date: '2026-02-28', label: 'Feb 28 (Layered Hawala Structuring)' },
+  { date: '2026-03-15', label: 'Mar 15 (Burner SIMs & Patna Safehouse)' },
+  { date: null, label: 'All Dates (Full Reconstructed Syndicate)' }
 ];
 
 export default function TemporalSlider({ onDateRangeChange }) {
@@ -15,6 +15,7 @@ export default function TemporalSlider({ onDateRangeChange }) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handleIndexChange = (idx) => {
+    setIsPlaying(false);
     setCurrentIndex(idx);
     const selectedStop = TIMELINE_STOPS[idx];
     if (onDateRangeChange) {
@@ -22,19 +23,37 @@ export default function TemporalSlider({ onDateRangeChange }) {
     }
   };
 
+  // Playback timer effect that properly stops immediately when isPlaying turns false or unmounts
+  React.useEffect(() => {
+    let interval = null;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setCurrentIndex((prev) => {
+          if (prev < TIMELINE_STOPS.length - 1) {
+            const nextIdx = prev + 1;
+            if (onDateRangeChange) {
+              onDateRangeChange(null, TIMELINE_STOPS[nextIdx].date);
+            }
+            return nextIdx;
+          } else {
+            setIsPlaying(false);
+            return prev;
+          }
+        });
+      }, 1400);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying, onDateRangeChange]);
+
   const handlePlayToggle = () => {
     if (!isPlaying) {
+      // If at the end, restart from step 0
+      if (currentIndex >= TIMELINE_STOPS.length - 1) {
+        handleIndexChange(0);
+      }
       setIsPlaying(true);
-      let step = 0;
-      const interval = setInterval(() => {
-        if (step < TIMELINE_STOPS.length) {
-          handleIndexChange(step);
-          step++;
-        } else {
-          clearInterval(interval);
-          setIsPlaying(false);
-        }
-      }, 1200);
     } else {
       setIsPlaying(false);
     }
@@ -58,17 +77,56 @@ export default function TemporalSlider({ onDateRangeChange }) {
         </div>
       </div>
 
-      {/* Stepper Slider */}
-      <div className="flex-1 max-w-xl mx-8 flex items-center space-x-3">
-        <input
-          type="range"
-          min="0"
-          max={TIMELINE_STOPS.length - 1}
-          value={currentIndex}
-          onChange={(e) => handleIndexChange(parseInt(e.target.value))}
-          className="w-full h-1.5 bg-intel-800 rounded-lg appearance-none cursor-pointer accent-intel-accent"
-        />
-        <span className="text-[10px] font-mono text-slate-400 whitespace-nowrap">
+      {/* Stepper Slider with Step Node Circles */}
+      <div className="flex-1 max-w-xl mx-8 flex items-center space-x-4">
+        <div className="relative flex-1 flex items-center h-6">
+          {/* Background Track Line */}
+          <div className="absolute left-0 right-0 h-1.5 bg-intel-900 border border-intel-800 rounded-full" />
+          
+          {/* Active Filled Progress Line */}
+          <div 
+            className="absolute left-0 h-1.5 bg-intel-accent rounded-full transition-all duration-200"
+            style={{ width: `${(currentIndex / (TIMELINE_STOPS.length - 1)) * 100}%` }}
+          />
+
+          {/* Stepped Circle Pips at Every Step */}
+          {TIMELINE_STOPS.map((stop, idx) => {
+            const percentage = (idx / (TIMELINE_STOPS.length - 1)) * 100;
+            const isPassed = idx < currentIndex;
+            const isCurrent = idx === currentIndex;
+            return (
+              <button
+                key={idx}
+                onClick={() => handleIndexChange(idx)}
+                style={{ left: `${percentage}%` }}
+                className={`absolute -translate-x-1/2 rounded-full transition-all duration-200 z-10 flex items-center justify-center ${
+                  isCurrent
+                    ? 'w-4 h-4 bg-intel-accent border-2 border-intel-950 shadow-md shadow-intel-accent/50 ring-4 ring-intel-accent/30 scale-110'
+                    : isPassed
+                    ? 'w-3.5 h-3.5 bg-intel-accent border-2 border-intel-950 hover:scale-125 shadow-sm shadow-intel-accent/30'
+                    : 'w-3.5 h-3.5 bg-intel-900 border-2 border-intel-700 hover:border-intel-accent hover:bg-slate-800 hover:scale-125'
+                }`}
+                title={`${stop.label} (Step ${idx + 1})`}
+              >
+                {isCurrent && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Interactive Range Input Overlay for Dragging */}
+          <input
+            type="range"
+            min="0"
+            max={TIMELINE_STOPS.length - 1}
+            value={currentIndex}
+            onChange={(e) => handleIndexChange(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+          />
+        </div>
+
+        <span className="text-[10px] font-mono text-slate-400 whitespace-nowrap bg-intel-900 px-2 py-0.5 rounded border border-intel-800">
           Step {currentIndex + 1}/{TIMELINE_STOPS.length}
         </span>
       </div>

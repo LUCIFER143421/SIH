@@ -21,7 +21,9 @@ class EntityExtractor:
     Generalizable Hybrid Entity Extractor:
     1. Structured regex extractors for ACCOUNT, VEHICLE, PHONE, and DATE.
     2. spaCy statistical NER for PERSON, GPE/LOC/FAC (LOCATION), ORG (ORGANIZATION).
-    3. Contextual disambiguation & heuristic normalization for locations, front orgs, and Indian names.
+    3. Precise capitalized indicator regexes for Honorific Persons, Front Orgs, and Locations.
+    4. General capitalized Name Sequence extraction with stopword filtering.
+    5. Strict non-overlapping span prevention preserving specific entities.
     """
     def __init__(self):
         # 1. High-precision structured patterns
@@ -30,7 +32,26 @@ class EntityExtractor:
         self.phone_pattern = re.compile(r'(?:\+91[\-\s]?)?[6-9]\d{4}[\-\s]?\d{5}\b')
         self.date_pattern = re.compile(r'\b(?:\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}|\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\b', re.IGNORECASE)
 
-        # Location keywords (facilities, plazas, terminals, markets, yards, ports, geographic terms)
+        # Precise multi-word indicator regexes (ONLY capitalized preceding words, preventing sentence consumption)
+        self.org_indicators = re.compile(
+            r'\b([A-Z][a-zA-Z0-9&.\-\']*(?:\s+[A-Z][a-zA-Z0-9&.\-\']*){0,3}\s+'
+            r'(?:Pvt\s+Ltd|Ltd|Limited|LLP|Trading(?:\s+Co)?|Logistics|Enterprises|Movers|Telecom|Solutions|Corp|Corporation))\b'
+        )
+
+        self.loc_indicators = re.compile(
+            r'\b([A-Z][a-zA-Z0-9.\-\']*(?:\s+[A-Z][a-zA-Z0-9.\-\']*){0,3}\s+'
+            r'(?:Market|Warehouse|Yard|Plaza|Terminal(?:\s+\d+)?|Port|Safehouse|Station|Airport|Road|Street|Lane|Nagar|Marg|Bagh|Chowk|Ghat|Dock|Depot|Tower|Towers|Complex|Arcade|Jetty))\b'
+        )
+
+        # Person honorifics and multi-word capitalized patterns (e.g. "Inspector S. K. Roy", "Officer Aarav Deshmukh")
+        self.honorific_person = re.compile(
+            r'\b(?:Inspector|Officer|SI|ASI|Constable|Shri|Smt|Mr\.|Mrs\.|Dr\.)\s+([A-Z](?:\.[A-Z]\.?|[a-z]+)?(?:\s+[A-Z](?:\.[A-Z]\.?|[a-z]+))*)\b'
+        )
+        self.capitalized_name_seq = re.compile(
+            r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'
+        )
+
+        # Location keywords
         self.location_keywords = {
             "market", "warehouse", "yard", "plaza", "office", "arcade", "terminal",
             "port", "safehouse", "station", "airport", "road", "street", "lane",
@@ -45,34 +66,14 @@ class EntityExtractor:
             "cell", "group", "agency", "industries", "exports", "imports", "services"
         }
 
-        # Suffix / structural regexes for Organizations and Locations
-        self.org_indicators = re.compile(
-            r'\b([A-Z][a-zA-Z0-9&.\-\']+(?:\s+[A-Z][a-zA-Z0-9&.\-\']+)*\s+'
-            r'(?:Pvt\s+Ltd|Ltd|Limited|LLP|Trading(?:\s+Co)?|Logistics|Enterprises|Movers|Telecom|Solutions|Corp|Corporation|Bank|Police|Cell|Group|Agency|Industries|Exports|Imports))\b',
-            re.IGNORECASE
-        )
-
-        self.loc_indicators = re.compile(
-            r'\b([A-Z][a-zA-Z0-9.\-\']+(?:\s+[A-Z][a-zA-Z0-9.\-\']+)*\s+'
-            r'(?:Market|Warehouse|Yard|Plaza|Office|Arcade|Terminal(?:\s+\d+)?|Port|Safehouse|Station|Airport|Road|Street|Lane|Nagar|Marg|Bagh|Chowk|Ghat|Dock|Depot|Tower|Towers|Complex|Jetty))\b',
-            re.IGNORECASE
-        )
-
-        # Person honorifics and multi-word capitalized patterns
-        self.honorific_person = re.compile(
-            r'\b(?:Inspector|Officer|SI|ASI|Constable|Shri|Smt|Mr\.|Mrs\.|Dr\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b'
-        )
-        self.capitalized_name_seq = re.compile(
-            r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'
-        )
-
         # Common stopwords to exclude from standalone person extraction
         self.stopwords = {
             "on", "in", "at", "after", "before", "during", "under", "while", "from", "with",
             "the", "a", "an", "this", "that", "these", "those", "special", "confidential",
             "analysis", "intelligence", "report", "investigation", "police", "cyber",
             "source", "case", "record", "fir", "cdr", "str", "bank", "account", "phone", "vehicle",
-            "near", "drove", "arrested", "suspect", "transferred", "funds", "using"
+            "near", "drove", "arrested", "suspect", "transferred", "funds", "using", "met", "seen",
+            "called", "contacted", "observed", "stated", "received", "delivered", "maintained"
         }
 
     def _classify_entity_text(self, text: str, default_type: str) -> str:
@@ -84,7 +85,7 @@ class EntityExtractor:
         if any(org_kw in lower for org_kw in self.org_keywords):
             return "ORGANIZATION"
 
-        # Check if entity contains location keyword (e.g., "Oberoi Business Plaza", "Mumbai Port Terminal")
+        # Check if entity contains location keyword (e.g., "Oberoi Business Plaza", "Guwahati Transit Yard")
         if any(w in self.location_keywords for w in words):
             return "LOCATION"
 
@@ -153,39 +154,7 @@ class EntityExtractor:
                     "confidence": 0.95
                 })
 
-        # 4. Extract Explicit Location Indicators (Plaza, Port, Terminal, Warehouse, Market, etc.)
-        for match in self.loc_indicators.finditer(text):
-            span = (match.start(), match.end())
-            if not is_overlapping(span[0], span[1]):
-                val = match.group().strip()
-                seen_spans.add(span)
-                extracted.append({
-                    "id": f"EXT_LOC_{uuid.uuid4().hex[:6]}",
-                    "canonical_name": val,
-                    "entity_type": "LOCATION",
-                    "raw_text": val,
-                    "start_char": match.start(),
-                    "end_char": match.end(),
-                    "confidence": 0.92
-                })
-
-        # 5. Extract Explicit Organization Indicators (Pvt Ltd, Logistics, Trading, etc.)
-        for match in self.org_indicators.finditer(text):
-            span = (match.start(), match.end())
-            if not is_overlapping(span[0], span[1]):
-                val = match.group().strip()
-                seen_spans.add(span)
-                extracted.append({
-                    "id": f"EXT_ORG_{uuid.uuid4().hex[:6]}",
-                    "canonical_name": val,
-                    "entity_type": "ORGANIZATION",
-                    "raw_text": val,
-                    "start_char": match.start(),
-                    "end_char": match.end(),
-                    "confidence": 0.91
-                })
-
-        # 6. Extract via spaCy NER with Contextual Disambiguation
+        # 4. Extract via spaCy statistical NER First for Natural Entity Spans (PERSON, ORG, LOC)
         if _nlp is not None and hasattr(_nlp, "pipe_names") and "ner" in _nlp.pipe_names:
             try:
                 doc = _nlp(text)
@@ -220,30 +189,64 @@ class EntityExtractor:
             except Exception:
                 pass
 
-        # 7. Extract Persons with Honorifics (e.g. "Inspector Aarav Deshmukh")
+        # 5. Extract Persons with Honorifics (e.g. "Inspector S. K. Roy", "Officer Aarav Deshmukh")
         for match in self.honorific_person.finditer(text):
+            # group(1) contains the person name
+            name_val = match.group(1).strip()
+            span = (match.start(1), match.end(1))
+            if not is_overlapping(span[0], span[1]) and len(name_val) >= 3:
+                seen_spans.add(span)
+                extracted.append({
+                    "id": f"EXT_PER_{uuid.uuid4().hex[:6]}",
+                    "canonical_name": name_val,
+                    "entity_type": "PERSON",
+                    "raw_text": match.group().strip(),
+                    "start_char": match.start(1),
+                    "end_char": match.end(1),
+                    "confidence": 0.93
+                })
+
+        # 6. Extract Explicit Organization Indicators (Apex Logistics Pvt Ltd, Horizon Gold Trading, etc.)
+        for match in self.org_indicators.finditer(text):
             span = (match.start(), match.end())
             if not is_overlapping(span[0], span[1]):
                 val = match.group().strip()
                 seen_spans.add(span)
                 extracted.append({
-                    "id": f"EXT_PER_{uuid.uuid4().hex[:6]}",
+                    "id": f"EXT_ORG_{uuid.uuid4().hex[:6]}",
                     "canonical_name": val,
-                    "entity_type": "PERSON",
+                    "entity_type": "ORGANIZATION",
                     "raw_text": val,
                     "start_char": match.start(),
                     "end_char": match.end(),
-                    "confidence": 0.91
+                    "confidence": 0.92
                 })
 
-        # 8. Extract General Capitalized Multi-word Sequences
+        # 7. Extract Explicit Location Indicators (Guwahati Transit Yard, Dimapur Market, etc.)
+        for match in self.loc_indicators.finditer(text):
+            span = (match.start(), match.end())
+            if not is_overlapping(span[0], span[1]):
+                val = match.group().strip()
+                seen_spans.add(span)
+                extracted.append({
+                    "id": f"EXT_LOC_{uuid.uuid4().hex[:6]}",
+                    "canonical_name": val,
+                    "entity_type": "LOCATION",
+                    "raw_text": val,
+                    "start_char": match.start(),
+                    "end_char": match.end(),
+                    "confidence": 0.92
+                })
+
+        # 8. Extract General Capitalized Multi-word Sequences (e.g. "Amit Kumar", "Rajesh Thapa")
         for match in self.capitalized_name_seq.finditer(text):
             span = (match.start(), match.end())
             if not is_overlapping(span[0], span[1]):
                 val = match.group().strip()
-                first_word = val.split()[0].lower()
-                last_word = val.split()[-1].lower()
-                if first_word not in self.stopwords and len(val) >= 4:
+                words = val.split()
+                first_word = words[0].lower()
+                last_word = words[-1].lower()
+                if first_word not in self.stopwords and last_word not in self.stopwords and len(val) >= 4:
                     ent_type = self._classify_entity_text(val, "PERSON")
                     seen_spans.add(span)
                     extracted.append({

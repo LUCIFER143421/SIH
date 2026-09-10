@@ -12,39 +12,64 @@ class NetworkXGraphAdapter(GraphStoreInterface):
         self.g.clear()
         self.undirected_g.clear()
 
+    @property
+    def graph(self):
+        return self.g
+
     def ensure_hydrated(self):
         """Auto-hydrates graph from database if in-memory graph is empty."""
         if len(self.g) == 0:
-            entities = db_service.get_entities()
-            for e in entities:
-                self.add_node(e["id"], e["canonical_name"], e["entity_type"], e["metadata"])
-            
-            relationships = db_service.get_relationships()
-            for r in relationships:
-                self.add_edge(
-                    r["id"],
-                    r["source_entity_id"],
-                    r["target_entity_id"],
-                    r["relationship_type"],
-                    r["confidence"],
-                    r["timestamp"],
-                    r["document_id"],
-                    {"snippet": r.get("evidence_snippet", "")}
-                )
+            self.rehydrate()
 
-    def add_node(self, node_id: str, label: str, node_type: str, metadata: Optional[Dict[str, Any]] = None):
+    def rehydrate(self, entities: Optional[List[Dict[str, Any]]] = None, relationships: Optional[List[Dict[str, Any]]] = None):
+        """Completely rebuilds in-memory graph from database records or passed datasets."""
+        self.clear()
+        ents = entities if entities is not None else db_service.get_entities()
+        for e in ents:
+            self.add_node(
+                node_id=e["id"],
+                label=e.get("canonical_name") or e.get("name", e["id"]),
+                node_type=e.get("entity_type") or e.get("type", "ENTITY"),
+                metadata=e.get("metadata", {}),
+                risk_score=float(e.get("risk_score", 0.0))
+            )
+        
+        rels = relationships if relationships is not None else db_service.get_relationships()
+        for r in rels:
+            src = r.get("source_entity_id") or r.get("source")
+            tgt = r.get("target_entity_id") or r.get("target")
+            rel_type = r.get("relationship_type") or r.get("type", "CONNECTED_TO")
+            conf = float(r.get("confidence", 1.0))
+            ts = r.get("timestamp")
+            doc = r.get("document_id") or r.get("doc", "")
+            snip = r.get("evidence_snippet") or r.get("snippet", "")
+            
+            self.add_edge(
+                r["id"],
+                src,
+                tgt,
+                rel_type,
+                conf,
+                ts,
+                doc,
+                {"snippet": snip}
+            )
+
+    def add_node(self, node_id: str, label: str, node_type: str, metadata: Optional[Dict[str, Any]] = None, risk_score: Optional[float] = None):
         meta = metadata or {}
+        score = float(risk_score) if risk_score is not None else float(meta.get("risk_score", 0.0))
         self.g.add_node(
             node_id,
             label=label,
             node_type=node_type,
-            risk_score=meta.get("risk_score", 0.0),
+            risk_score=score,
             metadata=meta
         )
         self.undirected_g.add_node(
             node_id,
             label=label,
             node_type=node_type,
+            risk_score=score,
             metadata=meta
         )
 

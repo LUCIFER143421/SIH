@@ -15,14 +15,13 @@ from graph.networkx_adapter import graph_adapter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup initialization
+    # Startup initialization - hydrate existing database records if present, otherwise stay in clean workspace mode
     existing_entities = db_service.get_entities()
-    if not existing_entities:
-        print("[CRIMENET AI] Initializing database with demo investigation scenario...")
-        load_demo_case()
-    else:
+    if existing_entities:
         print(f"[CRIMENET AI] Hydrating knowledge graph with {len(existing_entities)} existing entities...")
         graph_adapter.ensure_hydrated()
+    else:
+        print("[CRIMENET AI] Database initialized in clean workspace mode (0 entities / 0 relationships). Ready for case ingestion.")
     print(f"[CRIMENET AI] Knowledge Graph ready with {len(graph_adapter.g.nodes)} nodes and {len(graph_adapter.g.edges)} edges.")
     
     yield
